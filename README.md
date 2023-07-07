@@ -1,8 +1,5 @@
 # calcite-playground
 
-NOT YET IMPLEMENTED
-
-
 📚 Learning and exploring Apache Calcite.
 
 > Apache Calcite
