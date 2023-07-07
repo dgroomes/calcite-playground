@@ -10,6 +10,7 @@ repositories {
 dependencies {
     implementation(libs.slf4j.api)
     implementation(libs.slf4j.simple)
+    implementation(libs.calcite.file)
     implementation(libs.calcite.core)
 }
 

@@ -35,11 +35,18 @@ A Calcite-based program that uses the official CSV adapter to treat CSV files as
 See the README in [csv/](csv/).
 
 
+## Notes
+
+Quote from the [Calcite tutorial](https://calcite.apache.org/docs/tutorial.html):
+
+> As a "database without a storage layer”, Calcite doesn’t know about any file formats
+
+
 ## Wish List
 
 General clean-ups, TODOs and things I wish to implement for this project:
 
-* [ ] IN PROGRESS Get the CSV example working. Adapt it mostly verbatim from the official example.
+* [x] DONE Get the CSV example working. Adapt it mostly verbatim from the official example.
 * [ ] Create a subproject that creates a schema over a heap dump. There already is [a Calcite plugin for Eclipse Memory Analyzer](https://github.com/vlsi/mat-calcite-plugin),
   but I want to learn by implementing something myself and heap dumps are a convenient source of in-memory relational data.
 * [ ] Learn how in-memory joins are implemented. I want to learn this in the context of the heap dump subproject. Can
