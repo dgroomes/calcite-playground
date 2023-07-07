@@ -1,6 +1,7 @@
 # csv
 
-A Calcite-based program that defines a simple CSV adapter to treat CSV files as tables and make them queryable via SQL.
+A Calcite-based program that uses the official CSV adapter to treat CSV files as tables and make them queryable via SQL.
+
 
 ## Overview
 
@@ -67,6 +68,7 @@ Follow these instructions to build and run the example program.
       00:36:40 [main] INFO dgroomes.Runner - Population of Savannah (GA): 124,331
       00:36:40 [main] INFO dgroomes.Runner - Population of Boulder (CO): 108,968
       ```
+
 
 ## Wish List
 
