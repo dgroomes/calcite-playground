@@ -44,12 +44,21 @@ Quote from the [Calcite tutorial](https://calcite.apache.org/docs/tutorial.html)
 General clean-ups, TODOs and things I wish to implement for this project:
 
 * [x] DONE Get the CSV example working. Adapt it mostly verbatim from the official example.
+* [ ] "Drill to the core". I should be able to drill past the JDBC/Avatica layer and create an "enumerable and/or binding?"
+  directly (and via the relational algebra API) and then execute it. I learned that the "bindable" is the thing that
+  gets executed and "does the work" of actual query execution. In Calcite, code-generated LinQ4J code is how this works
+  by default (in the absense of other adapters/engines). This is what I want to do. Probably do this work in the context
+  of a simple in-memory/small dataset. Maybe I could do in the `csv/` subproject but that would be conflating two things.
 * [ ] Create a subproject that creates a schema over a heap dump. There already is [a Calcite plugin for Eclipse Memory Analyzer](https://github.com/vlsi/mat-calcite-plugin),
   but I want to learn by implementing something myself and heap dumps are a convenient source of in-memory relational data.
-* [ ] Learn how in-memory joins are implemented. I want to learn this in the context of the heap dump subproject. Can
+* [ ] Learn how in-memory joins (the thing that Calcite does for something it calls its "enumerable calling convention") are implemented. I want to learn this in the context of the heap dump subproject. Can
   I make an optimizer rule?
 
 
 ## Reference
 
 * [Apache Calcite](https://calcite.apache.org/)
+* [Apache Calcite: Tracing](https://calcite.apache.org/docs/howto.html#tracing)
+   * > To enable tracing, add the following flags to the java command line: `-Dcalcite.debug=true`
+* [Apache Calcite: *Built-in SQL implementation*](https://calcite.apache.org/docs/adapter.html#built-in-sql-implementation)
+   * > Relational expressions of enumerable convention are implemented as “built-ins”: Calcite generates Java code, compiles it, and executes inside its own JVM. Enumerable convention is less efficient than, say, a distributed engine running over column-oriented data files, but it can implement all core relational operators and all built-in SQL functions and operators. 

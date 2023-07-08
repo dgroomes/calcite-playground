@@ -85,3 +85,5 @@ General clean-ups, TODOs and things I wish to implement for this project:
 * [x] DONE Wire up the schema programmatically instead of using a JSON model file
 * [x] DONE support just `.csv` files in the example
 * [x] DONE Replace employee/sales domain with ZIPs/cities/states
+* [x] DONE (I learned some stuff) Explore the Calcite software machinery. How does the SQL query turn into a plan and get executed by
+  Calcite?
