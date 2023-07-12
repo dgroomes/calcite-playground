@@ -34,9 +34,7 @@ General clean-ups, TODOs and things I wish to implement for this project:
 * [ ] For large collections, what is the performance of joins? Does it take into account the size of the collections to
   figure out which to use for the "build" side (this should be the smaller collection) and which to use for the "probe"
   side (this should be the larger collection)?
-* [ ] Instead of writing a Linq4j expression tree directly, can I write an expression using the Calcite relational algebra
-  API and then "compile that" (or whatever) to a proper Calcite physical execution plan (which I think should execute
-  with the full force of Calcite's query optimizations and magic).
+
 
 ## Reference
 
