@@ -1,6 +1,7 @@
 package dgroomes;
 
 import org.apache.calcite.adapter.java.ReflectiveSchema;
+import org.apache.calcite.avatica.util.Casing;
 import org.apache.calcite.interpreter.Interpreter;
 import org.apache.calcite.plan.RelOptUtil;
 import org.apache.calcite.rel.RelNode;
@@ -8,6 +9,7 @@ import org.apache.calcite.rel.core.JoinRelType;
 import org.apache.calcite.schema.SchemaPlus;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.parser.SqlParseException;
+import org.apache.calcite.sql.parser.SqlParser;
 import org.apache.calcite.tools.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,7 +88,18 @@ public class RelationalAlgebraRunner {
             geographiesSchema = rootSchema.add("geographies", reflectiveSchema);
         }
 
-        frameworkConfig = Frameworks.newConfigBuilder().defaultSchema(geographiesSchema).build();
+        frameworkConfig = Frameworks.newConfigBuilder().defaultSchema(geographiesSchema)
+                // The default behavior of the framework config is to uppercase the SQL.
+                // This is generally a useful normalization but the reflective schema does
+                // not uppercase its table names (e.g. the 'cities' array list is represented
+                // as a 'cities' table. So there is a mismatch at the SQL validation time.
+                // To work around this, we can use the "unquoted casing unchanged" option.
+                .parserConfig(SqlParser.Config.DEFAULT.withUnquotedCasing(Casing.UNCHANGED))
+                .defaultSchema(geographiesSchema)
+                .build();
+
+        // Only use this as needed to glean information about the relational algebra expression
+        //examineSqlAsRelationalExpression();
 
         cityPop();
     }
@@ -105,23 +118,23 @@ public class RelationalAlgebraRunner {
                         builder.equals(
                                 builder.field(2, 0, "cityOid"),
                                 builder.field(2, 1, "oid")))
-                // How can we show the city name instead of the city OID? I want to still group by the OID because
-                // that's the right identifier, but I want to present the city name. I had an earlier tactic of writing
-                // SQL (which I know how to write) and then converting it to a relational algebra expression (which I'm
-                // still learning). I should do that.
-                .aggregate(builder.groupKey("cityOid"),
+                .aggregate(builder.groupKey("cityOid", "name"),
                         builder.sum(false, "city_population", builder.field("population")))
-                .project(builder.field(0), builder.field("city_population"))
+                .project(
+                        builder.field("name"),
+                        builder.field("cityOid"),
+                        builder.field("city_population"))
                 .build();
 
         DriverlessDataContext dataContext = new DriverlessDataContext(geographiesSchema, node);
 
         try (Interpreter interpreter = new Interpreter(dataContext, node)) {
             interpreter.forEach(row -> {
-                var city = row[0];
+                var cityName = row[0];
+                var cityOid = row[1];
                 //noinspection DataFlowIssue
-                var population = formatInteger((int) row[1]);
-                log.info("City '{}' has a population of {}", city, population);
+                var population = formatInteger((int) row[2]);
+                log.info("City '{}' ({}) has a population of {}", cityName, cityOid, population);
             });
         }
     }
@@ -133,7 +146,11 @@ public class RelationalAlgebraRunner {
      */
     private void examineSqlAsRelationalExpression() {
         // SQL Query
-        String sql = "SELECT e.name, d.name FROM emps e inner join depts d on e.deptno = d.deptno";
+        String sql = """
+                select c.name, sum(z.population)
+                from cities c inner join zips z on c.oid = z.cityOid
+                group by c.name
+                """;
 
         // Creating planner with default settings (what is a planner?)
         Planner planner = Frameworks.getPlanner(frameworkConfig);
@@ -143,7 +160,7 @@ public class RelationalAlgebraRunner {
             SqlNode parsedSql = planner.parse(sql);
             SqlNode validatedSql = planner.validate(parsedSql);
             node = planner.rel(validatedSql).rel;
-            log.info(RelOptUtil.toString(node));
+            log.info("\n{}", RelOptUtil.toString(node));
         } catch (SqlParseException | ValidationException | RelConversionException e) {
             throw new RuntimeException(e);
         }

@@ -20,9 +20,9 @@ Follow these instructions to build and run the example program.
       ```
     * It should print something like the following.
     * ```text
-      23:25:05 [main] INFO dgroomes.RelationalAlgebraRunner - Let's learn the Apache Calcite relational algebra API by summing up a sample of ZIP code population data by their city.
-      23:25:06 [main] INFO dgroomes.RelationalAlgebraRunner - City '1' has a population of 108,968
-      23:25:06 [main] INFO dgroomes.RelationalAlgebraRunner - City '2' has a population of 124,331
+      22:45:54 [main] INFO dgroomes.RelationalAlgebraRunner - Let's learn the Apache Calcite relational algebra API!
+      22:45:54 [main] INFO dgroomes.RelationalAlgebraRunner - City 'Boulder' (1) has a population of 108,968
+      22:45:54 [main] INFO dgroomes.RelationalAlgebraRunner - City 'Savannah' (2) has a population of 124,331
       ```
 
 
@@ -30,7 +30,7 @@ Follow these instructions to build and run the example program.
 
 General clean-ups, TODOs and things I wish to implement for this project:
 
-* [ ] Present city name instead of just OID.
+* [x] DONE Present city name instead of just OID.
 
 
 ## Reference
