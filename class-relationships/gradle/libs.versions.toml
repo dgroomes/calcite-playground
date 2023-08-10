@@ -1,12 +1,11 @@
 [versions]
-# SLF4J releases: http://www.slf4j.org/news.html
-slf4j = "2.0.7"
+slf4j = "2.0.7" # SLF4J releases: http://www.slf4j.org/news.html
+calcite = "1.35.0" # Apache Calcite releases: https://calcite.apache.org/docs/history.html
+classgraph = "4.8.160" # ClassGraph releases: https://github.com/classgraph/classgraph/releases
 
-# Apache Calcite releases: https://calcite.apache.org/docs/history.html
-calcite = "1.35.0"
 
 [libraries]
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
 calcite-core = { module = "org.apache.calcite:calcite-core", version.ref = "calcite" }
-
+classgraph = { module = "io.github.classgraph:classgraph", version.ref = "classgraph" }

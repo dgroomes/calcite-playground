@@ -1,5 +1,6 @@
 package dgroomes;
 
+import io.github.classgraph.ClassGraph;
 import org.apache.calcite.adapter.java.ReflectiveSchema;
 import org.apache.calcite.avatica.util.Casing;
 import org.apache.calcite.interpreter.Interpreter;
@@ -69,20 +70,22 @@ public class ClassRelationshipsRunner {
 
     public static void main(String[] args) {
         log.info("Let's reflectively analyze Java class-to-class relationships and query the data with Apache Calcite!");
-        log.error("NOT YET IMPLEMENTED");
         new ClassRelationshipsRunner().run();
     }
 
     public void run() {
         var rootSchema = Frameworks.createRootSchema(true);
 
-        var sampleTypes = new Type[]{
-                new Type("java.lang.String"),
-                new Type("java.lang.Integer"),
-                new Type("java.lang.Boolean"),
-        };
+        List<Class<?>> result;
+        try (var scanResult = new ClassGraph().enableSystemJarsAndModules().scan()) {
+            result = scanResult.getAllClasses().loadClasses(true);
+        }
 
-        var reflectiveSchema = new ReflectiveSchema(new ClassRelationships(sampleTypes));
+        var types = result.stream()
+                .map(it -> new Type(it.getName()))
+                .toArray(Type[]::new);
+
+        var reflectiveSchema = new ReflectiveSchema(new ClassRelationships(types));
         classRelationshipsSchema = rootSchema.add("geographies", reflectiveSchema);
 
         frameworkConfig = Frameworks.newConfigBuilder().defaultSchema(classRelationshipsSchema)
@@ -106,7 +109,7 @@ public class ClassRelationshipsRunner {
         String sql = """
                 select t.name
                 from types t
-                limit 2
+                limit 5
                 """;
 
         Planner planner = Frameworks.getPlanner(frameworkConfig);

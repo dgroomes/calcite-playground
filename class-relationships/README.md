@@ -1,6 +1,6 @@
 # class-relationships
 
-NOT YET IMPLEMENTED.
+NOT YET FULLY IMPLEMENTED.
 
 Model class-to-class relationships in an in-memory Calcite schema and explore advanced features like optimizer rules.  
 
@@ -32,10 +32,10 @@ Follow these instructions to build and run the example program.
 General clean-ups, TODOs and things I wish to implement for this project:
 
 * [x] DONE Scaffold
-* [ ] IN PROGRESS Populate the `types` table with names only. Use ClassGraph to scan the classpath for classes and populate the table.
+* [x] DONE Populate the `types` table with names only. Use ClassGraph to scan the classpath for classes and populate the table.
   Also, write a `limit` query or something to exercise it.
    * DONE Schema and sample query.
-   * Use ClassGraph 
+   * DONE Use ClassGraph 
 * [ ] Populate the `field` table with names and their owning class. Represent the relationship using  Also, write a `limit` query or something to exercise it.
 * [ ] Populate the relationship from field to their declared types (maybe just skip primitives?). This is a `field` to `class` relationship. And do
   the reverse. Write a join query to exercise this new relationship.
