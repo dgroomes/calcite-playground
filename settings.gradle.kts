@@ -26,3 +26,4 @@ rootProject.name = "calcite-playground"
 includeBuild("csv")
 includeBuild("linq4j")
 includeBuild("relational-algebra")
+includeBuild("class-relationships")
