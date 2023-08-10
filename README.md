@@ -69,9 +69,10 @@ General clean-ups, TODOs and things I wish to implement for this project:
   because (from my understanding at least) the core of Calcite is the relational algebra API, the optimizer, the default
   execution engine and some other cross-cutting things like the test kit and statistics. JDBC is like an adapter over that
   (albeit the most important and common one).
-* [ ] (stretch) Create a subproject that creates a schema over a heap dump. There already is [a Calcite plugin for Eclipse Memory Analyzer](https://github.com/vlsi/mat-calcite-plugin),
+* [ ] (stretch) UPDATE (ok heap dumps are cool but we need to bring in a lot of complexity to deserialize it which I
+  don't want to deal with so let's do a schema over classes. e.g. this class has a field that references this other class) Create a subproject that creates a schema over a heap dump. There already is [a Calcite plugin for Eclipse Memory Analyzer](https://github.com/vlsi/mat-calcite-plugin),
   but I want to learn by implementing something myself and heap dumps are a convenient source of in-memory relational data.
-* [ ] Learn how in-memory joins (the thing that Calcite does for something it calls its "enumerable calling convention") are implemented. I want to learn this in the context of the heap dump subproject. Can
+* [ ] Learn how in-memory joins (the thing that Calcite does for something it calls its "enumerable calling convention") are implemented. I want to learn this in the context of the class-relationships subproject. Can
   I make an optimizer rule?
 
 
