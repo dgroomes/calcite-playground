@@ -1,6 +1,7 @@
 package dgroomes;
 
 import io.github.classgraph.ClassGraph;
+import io.github.classgraph.ClassInfoList;
 import org.apache.calcite.adapter.java.ReflectiveSchema;
 import org.apache.calcite.avatica.util.Casing;
 import org.apache.calcite.interpreter.Interpreter;
@@ -25,43 +26,58 @@ public class ClassRelationshipsRunner {
     private FrameworkConfig frameworkConfig;
     private SchemaPlus classRelationshipsSchema;
 
-    public static class Type {
+    /**
+     * This is purposely named after the {@link io.github.classgraph.ClassInfo} class in ClassGraph because it is an
+     * excellent model, but I need a precise and small sub-scope of {@link io.github.classgraph.ClassInfo} to model the
+     * data as a "table" for Apache Calcite.
+     */
+    public static class ClassInfo {
         public final String name;
-        public List<Method> methods = new ArrayList<>();
-        public List<Field> fields = new ArrayList<>();
+        public final List<MethodInfo> methods = new ArrayList<>();
+        public final List<FieldInfo> field = new ArrayList<>();
 
-        public Type(String name) {
+        public ClassInfo(String name) {
             this.name = name;
         }
     }
 
-    public static class Method {
+    /**
+     * Named after the {@link io.github.classgraph.MethodInfo}.
+     */
+    public static class MethodInfo {
         public final String name;
-        public final List<Type> parameterTypes = new ArrayList<>();
-        public final Type returnType;
+        public final List<ClassInfo> parameterClasses = new ArrayList<>();
+        public final ClassInfo returnClass;
 
-        public Method(String name, Type returnType) {
+        public MethodInfo(String name, ClassInfo returnClass) {
             this.name = name;
-            this.returnType = returnType;
+            this.returnClass = returnClass;
         }
     }
 
-    public static class Field {
+    /**
+     * Named after the {@link io.github.classgraph.FieldInfo}.
+     */
+    public static class FieldInfo {
         public final String name;
-        public final Type type;
+        public final ClassInfo owningClass;
+        public ClassInfo declaredClass; // TODO lazily set
 
-        public Field(String name, Type type) {
+        public FieldInfo(String name, ClassInfo owningClass) {
             this.name = name;
-            this.type = type;
+            this.owningClass = owningClass;
         }
     }
 
     public static class ClassRelationships {
+        public final ClassInfo[] classes;
+        public final FieldInfo[] fields;
+        public final MethodInfo[] methods;
 
-        public final Type[] types;
-
-        public ClassRelationships(Type[] types) {
-            this.types = types;
+        public ClassRelationships(ClassInfo[] classes, FieldInfo[] fields, MethodInfo[] methods) {
+            this.classes = classes;
+            this.fields = fields;
+            this.methods = methods;
         }
     }
 
@@ -76,16 +92,16 @@ public class ClassRelationshipsRunner {
     public void run() {
         var rootSchema = Frameworks.createRootSchema(true);
 
-        List<Class<?>> result;
+        ClassInfoList classInfos;
         try (var scanResult = new ClassGraph().enableSystemJarsAndModules().scan()) {
-            result = scanResult.getAllClasses().loadClasses(true);
+            classInfos = scanResult.getAllClasses();
         }
 
-        var types = result.stream()
-                .map(it -> new Type(it.getName()))
-                .toArray(Type[]::new);
+        var classes = classInfos.stream()
+                .map(it -> new ClassInfo(it.getName()))
+                .toArray(ClassInfo[]::new);
 
-        var reflectiveSchema = new ReflectiveSchema(new ClassRelationships(types));
+        var reflectiveSchema = new ReflectiveSchema(new ClassRelationships(classes, new FieldInfo[]{}, new MethodInfo[]{}));
         classRelationshipsSchema = rootSchema.add("geographies", reflectiveSchema);
 
         frameworkConfig = Frameworks.newConfigBuilder().defaultSchema(classRelationshipsSchema)
@@ -98,17 +114,17 @@ public class ClassRelationshipsRunner {
                 .defaultSchema(classRelationshipsSchema)
                 .build();
 
-        queryTypes();
+        queryClasses();
     }
 
 
     /**
-     * Simple query over the 'types' table.
+     * Simple query over the 'classes' table.
      */
-    private void queryTypes() {
+    private void queryClasses() {
         String sql = """
-                select t.name
-                from types t
+                select c.name
+                from classes c
                 limit 5
                 """;
 
@@ -128,7 +144,7 @@ public class ClassRelationshipsRunner {
         try (Interpreter interpreter = new Interpreter(dataContext, node)) {
             interpreter.forEach(row -> {
                 var name = row[0];
-                log.info("Type name '{}'", name);
+                log.info("Class name '{}'", name);
             });
         }
     }
