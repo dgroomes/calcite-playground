@@ -15,8 +15,10 @@ import org.apache.calcite.tools.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Please see the README for more context.
@@ -33,8 +35,6 @@ public class ClassRelationshipsRunner {
      */
     public static class ClassInfo {
         public final String name;
-        public final List<MethodInfo> methods = new ArrayList<>();
-        public final List<FieldInfo> field = new ArrayList<>();
 
         public ClassInfo(String name) {
             this.name = name;
@@ -61,14 +61,23 @@ public class ClassRelationshipsRunner {
     public static class FieldInfo {
         public final String name;
         public final ClassInfo owningClass;
+
+        /**
+         * It's redundant to store the owning class name, but it's necessary to have a join column.
+         */
+        public final String owningClassName;
         public ClassInfo declaredClass; // TODO lazily set
 
         public FieldInfo(String name, ClassInfo owningClass) {
             this.name = name;
             this.owningClass = owningClass;
+            owningClassName = owningClass.name;
         }
     }
 
+    /**
+     * This is a schema-like dataset. Each field (array of objects) is like a table of rows.
+     */
     public static class ClassRelationships {
         public final ClassInfo[] classes;
         public final FieldInfo[] fields;
@@ -78,6 +87,15 @@ public class ClassRelationshipsRunner {
             this.classes = classes;
             this.fields = fields;
             this.methods = methods;
+        }
+
+        @Override
+        public String toString() {
+            return "ClassRelationships{" +
+                    "classes=" + formatInteger(classes.length) +
+                    ", fields=" + formatInteger(fields.length) +
+                    ", methods=" + formatInteger(methods.length) +
+                    '}';
         }
     }
 
@@ -92,16 +110,33 @@ public class ClassRelationshipsRunner {
     public void run() {
         var rootSchema = Frameworks.createRootSchema(true);
 
+        ClassGraph classGraph = new ClassGraph().enableSystemJarsAndModules().enableFieldInfo();
+
         ClassInfoList classInfos;
-        try (var scanResult = new ClassGraph().enableSystemJarsAndModules().scan()) {
+        try (var scanResult = classGraph.scan()) {
             classInfos = scanResult.getAllClasses();
         }
 
-        var classes = classInfos.stream()
-                .map(it -> new ClassInfo(it.getName()))
-                .toArray(ClassInfo[]::new);
+        List<ClassInfo> classes = new ArrayList<>();
+        List<FieldInfo> fields = new ArrayList<>();
 
-        var reflectiveSchema = new ReflectiveSchema(new ClassRelationships(classes, new FieldInfo[]{}, new MethodInfo[]{}));
+        for (var classInfo_ : classInfos) {
+            var classInfo = new ClassInfo(classInfo_.getName());
+            for (var fieldInfo_ : classInfo_.getFieldInfo()) {
+                var fieldInfo = new FieldInfo(fieldInfo_.getName(), classInfo);
+                fields.add(fieldInfo);
+            }
+            classes.add(classInfo);
+        }
+
+        ClassRelationships classRelationships = new ClassRelationships(
+                classes.toArray(ClassInfo[]::new),
+                fields.toArray(FieldInfo[]::new),
+                new MethodInfo[]{});
+
+        log.info("Built the final in-memory data set: {}", classRelationships);
+
+        var reflectiveSchema = new ReflectiveSchema(classRelationships);
         classRelationshipsSchema = rootSchema.add("geographies", reflectiveSchema);
 
         frameworkConfig = Frameworks.newConfigBuilder().defaultSchema(classRelationshipsSchema)
@@ -116,7 +151,6 @@ public class ClassRelationshipsRunner {
 
         queryClasses();
     }
-
 
     /**
      * Simple query over the 'classes' table.
@@ -147,5 +181,14 @@ public class ClassRelationshipsRunner {
                 log.info("Class name '{}'", name);
             });
         }
+    }
+
+    /**
+     * Formats an integer value with commas.
+     * <p>
+     * For example, 1234567 becomes "1,234,567".
+     */
+    public static String formatInteger(int value) {
+        return NumberFormat.getNumberInstance(Locale.US).format(value);
     }
 }
