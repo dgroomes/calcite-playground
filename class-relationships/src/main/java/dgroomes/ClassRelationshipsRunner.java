@@ -19,6 +19,7 @@ import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.Consumer;
 
 /**
  * Please see the README for more context.
@@ -78,23 +79,19 @@ public class ClassRelationshipsRunner {
             classes.add(classInfo);
         }
 
-        ClassRelationships classRelationships = new ClassRelationships(
+        return new ClassRelationships(
                 classes.toArray(ClassInfo[]::new),
                 fields.toArray(FieldInfo[]::new),
                 new MethodInfo[]{});
-        return classRelationships;
     }
 
     /**
-     * Simple query over the 'classes' table.
+     * Execute a SQL query over the {@link ClassRelationships} data set.
+     *
+     * @param sql        The SQL string to execute.
+     * @param rowHandler A function to handle each row of the result.
      */
-    private void queryClasses() {
-        String sql = """
-                select c.name
-                from classes c
-                limit 5
-                """;
-
+    private void query(String sql, Consumer<Object[]> rowHandler) {
         Planner planner = Frameworks.getPlanner(frameworkConfig);
 
         RelNode node;
@@ -109,11 +106,24 @@ public class ClassRelationshipsRunner {
 
         DriverlessDataContext dataContext = new DriverlessDataContext(classRelationshipsSchema, node);
         try (Interpreter interpreter = new Interpreter(dataContext, node)) {
-            interpreter.forEach(row -> {
-                var name = row[0];
-                log.info("Class name '{}'", name);
-            });
+            interpreter.forEach(rowHandler);
         }
+    }
+
+    /**
+     * Simple query over the 'classes' table.
+     */
+    private void queryClasses() {
+        String sql = """
+                select c.name
+                from classes c
+                limit 5
+                """;
+
+        query(sql, row -> {
+            var name = row[0];
+            log.info("Class name '{}'", name);
+        });
     }
 
     /**
