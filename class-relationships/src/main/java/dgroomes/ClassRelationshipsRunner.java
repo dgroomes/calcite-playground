@@ -57,6 +57,7 @@ public class ClassRelationshipsRunner {
                 .build();
 
         queryClasses();
+        queryFields();
     }
 
     private static ClassRelationships buildDataSet() {
@@ -125,6 +126,24 @@ public class ClassRelationshipsRunner {
             log.info("Class name '{}'", name);
         });
     }
+
+    /**
+     * Simple query over the 'fields' table.
+     */
+    private void queryFields() {
+        String sql = """
+                select f.name, f.owningClassName
+                from fields f
+                limit 5
+                """;
+
+        query(sql, row -> {
+            var name = row[0];
+            var owningClassName = row[1];
+            log.info("Field name '{}' on class '{}'", name, owningClassName);
+        });
+    }
+
 
     /**
      * Formats an integer value with commas.
