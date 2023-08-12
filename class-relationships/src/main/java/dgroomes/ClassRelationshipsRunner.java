@@ -28,77 +28,6 @@ public class ClassRelationshipsRunner {
     private FrameworkConfig frameworkConfig;
     private SchemaPlus classRelationshipsSchema;
 
-    /**
-     * This is purposely named after the {@link io.github.classgraph.ClassInfo} class in ClassGraph because it is an
-     * excellent model, but I need a precise and small sub-scope of {@link io.github.classgraph.ClassInfo} to model the
-     * data as a "table" for Apache Calcite.
-     */
-    public static class ClassInfo {
-        public final String name;
-
-        public ClassInfo(String name) {
-            this.name = name;
-        }
-    }
-
-    /**
-     * Named after the {@link io.github.classgraph.MethodInfo}.
-     */
-    public static class MethodInfo {
-        public final String name;
-        public final List<ClassInfo> parameterClasses = new ArrayList<>();
-        public final ClassInfo returnClass;
-
-        public MethodInfo(String name, ClassInfo returnClass) {
-            this.name = name;
-            this.returnClass = returnClass;
-        }
-    }
-
-    /**
-     * Named after the {@link io.github.classgraph.FieldInfo}.
-     */
-    public static class FieldInfo {
-        public final String name;
-        public final ClassInfo owningClass;
-
-        /**
-         * It's redundant to store the owning class name, but it's necessary to have a join column.
-         */
-        public final String owningClassName;
-        public ClassInfo declaredClass; // TODO lazily set
-
-        public FieldInfo(String name, ClassInfo owningClass) {
-            this.name = name;
-            this.owningClass = owningClass;
-            owningClassName = owningClass.name;
-        }
-    }
-
-    /**
-     * This is a schema-like dataset. Each field (array of objects) is like a table of rows.
-     */
-    public static class ClassRelationships {
-        public final ClassInfo[] classes;
-        public final FieldInfo[] fields;
-        public final MethodInfo[] methods;
-
-        public ClassRelationships(ClassInfo[] classes, FieldInfo[] fields, MethodInfo[] methods) {
-            this.classes = classes;
-            this.fields = fields;
-            this.methods = methods;
-        }
-
-        @Override
-        public String toString() {
-            return "ClassRelationships{" +
-                    "classes=" + formatInteger(classes.length) +
-                    ", fields=" + formatInteger(fields.length) +
-                    ", methods=" + formatInteger(methods.length) +
-                    '}';
-        }
-    }
-
 
     private static final Logger log = LoggerFactory.getLogger(ClassRelationshipsRunner.class);
 
@@ -108,8 +37,28 @@ public class ClassRelationshipsRunner {
     }
 
     public void run() {
+        ClassRelationships classRelationships = buildDataSet();
+        log.info("Built the final in-memory data set: {}", classRelationships);
+
         var rootSchema = Frameworks.createRootSchema(true);
 
+        var reflectiveSchema = new ReflectiveSchema(classRelationships);
+        classRelationshipsSchema = rootSchema.add("geographies", reflectiveSchema);
+
+        frameworkConfig = Frameworks.newConfigBuilder().defaultSchema(classRelationshipsSchema)
+                // The default behavior of the framework config is to uppercase the SQL.
+                // This is generally a useful normalization but the reflective schema does
+                // not uppercase its table names (e.g. the 'cities' array list is represented
+                // as a 'cities' table. So there is a mismatch at the SQL validation time.
+                // To work around this, we can use the "unquoted casing unchanged" option.
+                .parserConfig(SqlParser.Config.DEFAULT.withUnquotedCasing(Casing.UNCHANGED))
+                .defaultSchema(classRelationshipsSchema)
+                .build();
+
+        queryClasses();
+    }
+
+    private static ClassRelationships buildDataSet() {
         ClassGraph classGraph = new ClassGraph().enableSystemJarsAndModules().enableFieldInfo();
 
         ClassInfoList classInfos;
@@ -133,23 +82,7 @@ public class ClassRelationshipsRunner {
                 classes.toArray(ClassInfo[]::new),
                 fields.toArray(FieldInfo[]::new),
                 new MethodInfo[]{});
-
-        log.info("Built the final in-memory data set: {}", classRelationships);
-
-        var reflectiveSchema = new ReflectiveSchema(classRelationships);
-        classRelationshipsSchema = rootSchema.add("geographies", reflectiveSchema);
-
-        frameworkConfig = Frameworks.newConfigBuilder().defaultSchema(classRelationshipsSchema)
-                // The default behavior of the framework config is to uppercase the SQL.
-                // This is generally a useful normalization but the reflective schema does
-                // not uppercase its table names (e.g. the 'cities' array list is represented
-                // as a 'cities' table. So there is a mismatch at the SQL validation time.
-                // To work around this, we can use the "unquoted casing unchanged" option.
-                .parserConfig(SqlParser.Config.DEFAULT.withUnquotedCasing(Casing.UNCHANGED))
-                .defaultSchema(classRelationshipsSchema)
-                .build();
-
-        queryClasses();
+        return classRelationships;
     }
 
     /**
