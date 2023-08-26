@@ -40,8 +40,7 @@ General clean-ups, TODOs and things I wish to implement for this project:
   the classes because I'll get `ClassNotFoundException` for classes that are not on the classpath at runtime but were
   at compile time.
 * [x] DONE Populate the `field` table with names and their owning class (NOT their declared class. that comes later). Also, write a `limit` query or something to exercise it.
-* [ ] Populate the relationship from field to their declared class (maybe just skip primitives?). This is a `field` to `class` relationship. And do
-  the reverse. Write a join query to exercise this new relationship.
+* [x] DONE (wow it executes slowly! 30+ seconds) Write a join query between `class` and `field`.
 * [ ] Research how the join is executed at runtime. Is there a bit set?
 * [ ] Assuming that the join is not optimized (or even if it is?), write a custom optimizer rule to optimize the join.
   I want to know the options for implementing joins where there isn't a join key but instead there is a direct pointer
