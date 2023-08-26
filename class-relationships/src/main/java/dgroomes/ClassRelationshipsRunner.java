@@ -26,15 +26,36 @@ import java.util.function.Consumer;
  */
 public class ClassRelationshipsRunner {
 
+    private final int takeFirstNClasses;
     private FrameworkConfig frameworkConfig;
     private SchemaPlus classRelationshipsSchema;
 
 
     private static final Logger log = LoggerFactory.getLogger(ClassRelationshipsRunner.class);
 
+    public ClassRelationshipsRunner(int takeFirstNClasses) {
+        this.takeFirstNClasses = takeFirstNClasses;
+    }
+
     public static void main(String[] args) {
         log.info("Let's reflectively analyze Java class-to-class relationships and query the data with Apache Calcite!");
-        new ClassRelationshipsRunner().run();
+
+        int takeFirstNClasses;
+        String takeFirstNClassesEnv = System.getenv("TAKE_FIRST_N_CLASSES");
+
+        if (takeFirstNClassesEnv != null) {
+            try {
+                takeFirstNClasses = Integer.parseInt(takeFirstNClassesEnv);
+            } catch (NumberFormatException e) {
+                var msg = "The value in the environment variable 'TAKE_FIRST_N_CLASSES' ('%s') is not a number.".formatted(takeFirstNClassesEnv);
+                throw new IllegalArgumentException(msg);
+            }
+        } else {
+            takeFirstNClasses = Integer.MAX_VALUE;
+        }
+
+        var runner = new ClassRelationshipsRunner(takeFirstNClasses);
+        runner.run();
     }
 
     public void run() {
@@ -58,10 +79,10 @@ public class ClassRelationshipsRunner {
 
         queryClasses();
         queryFields();
-        queryClassesWithOverThreeHundredFields();
+        queryClassesWithMostFields();
     }
 
-    private static ClassRelationships buildDataSet() {
+    private ClassRelationships buildDataSet() {
         ClassGraph classGraph = new ClassGraph().enableSystemJarsAndModules().enableFieldInfo();
 
         ClassInfoList classInfos;
@@ -72,7 +93,8 @@ public class ClassRelationshipsRunner {
         List<ClassInfo> classes = new ArrayList<>();
         List<FieldInfo> fields = new ArrayList<>();
 
-        for (var classInfo_ : classInfos) {
+        for (int i = 0; i < classInfos.size() && i < takeFirstNClasses; i++) {
+            var classInfo_ = classInfos.get(i);
             var classInfo = new ClassInfo(classInfo_.getName());
             for (var fieldInfo_ : classInfo_.getFieldInfo()) {
                 var fieldInfo = new FieldInfo(fieldInfo_.getName(), classInfo);
@@ -145,14 +167,14 @@ public class ClassRelationshipsRunner {
         });
     }
 
-    private void queryClassesWithOverThreeHundredFields() {
+    private void queryClassesWithMostFields() {
         String sql = """
                 select c.name, count(*)
                 from classes c
                 join fields f on c.name = f.owningClassName
                 group by c.name
-                having count(*) > 300
                 order by count(*) desc
+                limit 10
                 """;
 
         query(sql, row -> {
