@@ -3,7 +3,7 @@
 slf4j = "2.0.7"
 
 # Apache Calcite releases: https://calcite.apache.org/docs/history.html
-calcite = "1.34.0"
+calcite = "1.35.0"
 
 [libraries]
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }

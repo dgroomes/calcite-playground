@@ -47,7 +47,8 @@ General clean-ups, TODOs and things I wish to implement for this project:
 * [x] DONE (wow it executes slowly! 30+ seconds) Write a join query between `class` and `field`.
 * [ ] IN PROGRESS Research how the join is executed at runtime. Is there a bit set?
   * DONE Reduce the dataset (parameterizable) so that we have a more manageable dataset to work with.
-  * Look into Calcite's documentation on debugging and tracing.
+  * DONE (well I just increased the log level but when it comes to actual execution nothing is logged, probably for performance) Look into Calcite's documentation on debugging and tracing.
+  * I profiled the program execution and this is the hot spot: `org.apache.calcite.interpreter.JoinNode.doJoin()`
 * [ ] Assuming that the join is not optimized (or even if it is?), write a custom optimizer rule to optimize the join.
   I want to know the options for implementing joins where there isn't a join key but instead there is a direct pointer
   (object-to-object reference). Or maybe I'll realize that my question doesn't even make sense.
