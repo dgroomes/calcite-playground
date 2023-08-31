@@ -49,6 +49,10 @@ General clean-ups, TODOs and things I wish to implement for this project:
   * DONE Reduce the dataset (parameterizable) so that we have a more manageable dataset to work with.
   * DONE (well I just increased the log level but when it comes to actual execution nothing is logged, probably for performance) Look into Calcite's documentation on debugging and tracing.
   * I profiled the program execution and this is the hot spot: `org.apache.calcite.interpreter.JoinNode.doJoin()`
+  * It is doing a nested loop join which is slow. From the trace logs I can tell that it estimates the table scan for each
+    table (field and class) to be 100 rows. I think  this is just a default. This is wrong of course because there are
+    tens of thousands of rows total. If I can update the statistics, will the planner choose a better join algorithm
+    like hash join?
 * [ ] Assuming that the join is not optimized (or even if it is?), write a custom optimizer rule to optimize the join.
   I want to know the options for implementing joins where there isn't a join key but instead there is a direct pointer
   (object-to-object reference). Or maybe I'll realize that my question doesn't even make sense.

@@ -65,7 +65,7 @@ public class ClassRelationshipsRunner {
         var rootSchema = Frameworks.createRootSchema(true);
 
         var reflectiveSchema = new ReflectiveSchema(classRelationships);
-        classRelationshipsSchema = rootSchema.add("geographies", reflectiveSchema);
+        classRelationshipsSchema = rootSchema.add("class-relationships", reflectiveSchema);
 
         frameworkConfig = Frameworks.newConfigBuilder().defaultSchema(classRelationshipsSchema)
                 // The default behavior of the framework config is to uppercase the SQL.
@@ -77,8 +77,6 @@ public class ClassRelationshipsRunner {
                 .defaultSchema(classRelationshipsSchema)
                 .build();
 
-        queryClasses();
-        queryFields();
         queryClassesWithMostFields();
     }
 
@@ -132,39 +130,6 @@ public class ClassRelationshipsRunner {
         try (Interpreter interpreter = new Interpreter(dataContext, node)) {
             interpreter.forEach(rowHandler);
         }
-    }
-
-    /**
-     * Simple query over the 'classes' table.
-     */
-    private void queryClasses() {
-        String sql = """
-                select c.name
-                from classes c
-                limit 5
-                """;
-
-        query(sql, row -> {
-            var name = row[0];
-            log.info("Class name '{}'", name);
-        });
-    }
-
-    /**
-     * Simple query over the 'fields' table.
-     */
-    private void queryFields() {
-        String sql = """
-                select f.name, f.owningClassName
-                from fields f
-                limit 5
-                """;
-
-        query(sql, row -> {
-            var name = row[0];
-            var owningClassName = row[1];
-            log.info("Field name '{}' on class '{}'", name, owningClassName);
-        });
     }
 
     private void queryClassesWithMostFields() {
