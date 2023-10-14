@@ -63,6 +63,6 @@ General clean-ups, TODOs and things I wish to implement for this project:
 * [ ] IN PROGRESS Custom adapter which is mostly just a port of ReflectiveSchema. I need support for statistics, but it would also
   be nice if it supported record types.
   * DONE "Scaffold by copy"
-  * Make it my own. Refactoring/restructuring to my liking.
+  * IN PROGRESS Make it my own. Refactoring/restructuring to my liking.
   * Support record types
   * Support statistics

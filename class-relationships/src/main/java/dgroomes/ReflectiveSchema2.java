@@ -20,7 +20,6 @@ import org.apache.calcite.schema.impl.AbstractTableQueryable;
 import org.apache.calcite.schema.impl.ReflectiveFunctionBase;
 import org.apache.calcite.util.BuiltInMethod;
 import org.apache.calcite.util.Util;
-import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.lang.reflect.*;
@@ -34,12 +33,11 @@ import static java.util.Objects.requireNonNull;
  * This is my port of {@link org.apache.calcite.adapter.java.ReflectiveSchema}. I want this port to support statistics
  * and Java record classes.
  */
-public class ReflectiveSchema2
-        extends AbstractSchema {
-    private final Class clazz;
+public class ReflectiveSchema2 extends AbstractSchema {
+    private final Class<?> clazz;
     private final Object target;
-    private @MonotonicNonNull Map<String, Table> tableMap;
-    private @MonotonicNonNull Multimap<String, Function> functionMap;
+    private Map<String, Table> tableMap;
+    private Multimap<String, Function> functionMap;
 
     /**
      * Creates a ReflectiveSchema.
@@ -67,7 +65,6 @@ public class ReflectiveSchema2
         return target;
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
     @Override
     protected Map<String, Table> getTableMap() {
         if (tableMap == null) {
@@ -161,10 +158,11 @@ public class ReflectiveSchema2
      * Returns a table based on a particular field of this schema. If the
      * field is not of the right type to be a relation, returns null.
      */
-    private <T> @Nullable Table fieldRelation(final Field field) {
+    private <T> Table fieldRelation(final Field field) {
         final Type elementType = getElementType(field.getType());
-        if (elementType == null) {
-            return null;
+        if (!(elementType instanceof Class<?> elementTypeClass)) {
+            var msg = "A reflective schema is made up of instance fields (Class types) that represent tables. The field type '%s' is not supported".formatted(elementType);
+            throw new IllegalArgumentException(msg);
         }
         Object o;
         try {
@@ -174,15 +172,15 @@ public class ReflectiveSchema2
                     "Error while accessing field " + field, e);
         }
         requireNonNull(o, () -> "field " + field + " is null for " + target);
-        @SuppressWarnings("unchecked") final Enumerable<T> enumerable = toEnumerable(o);
-        return new FieldTable<>(field, elementType, enumerable);
+        @SuppressWarnings("unchecked") var enumerable = (Enumerable<T>) toEnumerable(o);
+        return new FieldTable<>(field, elementTypeClass, enumerable);
     }
 
     /**
      * Deduces the element type of a collection;
      * same logic as {@link #toEnumerable}.
      */
-    private static @Nullable Type getElementType(Class clazz) {
+    private static @Nullable Type getElementType(Class<?> clazz) {
         if (clazz.isArray()) {
             return clazz.getComponentType();
         }
@@ -192,7 +190,7 @@ public class ReflectiveSchema2
         return null; // not a collection/array/iterable
     }
 
-    private static Enumerable toEnumerable(final Object o) {
+    private static Enumerable<?> toEnumerable(final Object o) {
         if (o.getClass().isArray()) {
             if (o instanceof Object[]) {
                 return Linq4j.asEnumerable((Object[]) o);
@@ -201,7 +199,7 @@ public class ReflectiveSchema2
             }
         }
         if (o instanceof Iterable) {
-            return Linq4j.asEnumerable((Iterable) o);
+            return Linq4j.asEnumerable((Iterable<?>) o);
         }
         throw new RuntimeException(
                 "Cannot convert " + o.getClass() + " into a Enumerable");
@@ -211,11 +209,13 @@ public class ReflectiveSchema2
     private static class ReflectiveTable
             extends AbstractQueryableTable
             implements Table, ScannableTable {
-        private final Enumerable enumerable;
+        private final Enumerable<?> enumerable;
+        private final Class<?> elementTypeClass;
 
-        ReflectiveTable(Type elementType, Enumerable enumerable) {
+        ReflectiveTable(Class<?> elementType, Enumerable<?> enumerable) {
             super(elementType);
             this.enumerable = enumerable;
+            this.elementTypeClass = elementType;
         }
 
         @Override
@@ -230,13 +230,8 @@ public class ReflectiveSchema2
 
         @Override
         public Enumerable<@Nullable Object[]> scan(DataContext root) {
-            if (elementType == Object[].class) {
-                //noinspection unchecked
-                return enumerable;
-            } else {
-                //noinspection unchecked
-                return enumerable.select(new FieldSelector((Class) elementType));
-            }
+            @SuppressWarnings("unchecked") var enumerableCast = (Enumerable<Object>) enumerable;
+            return enumerableCast.select(new FieldSelector(elementTypeClass));
         }
 
         @Override
@@ -362,11 +357,11 @@ public class ReflectiveSchema2
         private final Field field;
         private Statistic statistic;
 
-        FieldTable(Field field, Type elementType, Enumerable<T> enumerable) {
+        FieldTable(Field field, Class<?> elementType, Enumerable<T> enumerable) {
             this(field, elementType, enumerable, Statistics.UNKNOWN);
         }
 
-        FieldTable(Field field, Type elementType, Enumerable<T> enumerable,
+        FieldTable(Field field, Class<?> elementType, Enumerable<T> enumerable,
                    Statistic statistic) {
             super(elementType, enumerable);
             this.field = field;
