@@ -61,7 +61,7 @@ public class ClassRelationshipsRunner {
 
         var rootSchema = Frameworks.createRootSchema(true);
 
-        var reflectiveSchema = ReflectiveSchema2.create(classRelationships);
+        var reflectiveSchema = ReflectiveSchema2.inferSchema(classRelationships);
         classRelationshipsSchema = rootSchema.add("class-relationships", reflectiveSchema);
 
         frameworkConfig = Frameworks.newConfigBuilder().defaultSchema(classRelationshipsSchema)

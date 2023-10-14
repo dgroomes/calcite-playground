@@ -63,6 +63,7 @@ General clean-ups, TODOs and things I wish to implement for this project:
 * [ ] IN PROGRESS Custom adapter which is mostly just a port of ReflectiveSchema. I need support for statistics, but it would also
   be nice if it supported record types.
   * DONE "Scaffold by copy"
-  * IN PROGRESS Make it my own. Refactoring/restructuring to my liking.
+  * IN PROGRESS Make it my own. Refactoring/restructuring to my liking. Update: this is the second time I've gone down
+    this road. I made a custom schema in my `csv/` subproject. It makes me pause, but not sure what the lesson is.
   * Support record types
   * Support statistics

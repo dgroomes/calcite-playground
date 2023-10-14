@@ -7,7 +7,6 @@ import org.apache.calcite.adapter.java.AbstractQueryableTable;
 import org.apache.calcite.adapter.java.JavaTypeFactory;
 import org.apache.calcite.linq4j.*;
 import org.apache.calcite.linq4j.function.Function1;
-import org.apache.calcite.linq4j.tree.Primitive;
 import org.apache.calcite.rel.RelReferentialConstraint;
 import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rel.type.RelDataTypeFactory;
@@ -38,18 +37,18 @@ import static java.util.Objects.requireNonNull;
  * </pre>
  */
 public class ReflectiveSchema2 extends AbstractSchema {
-    private final Object target;
+    private final Object tableHolder;
     private final Map<String, Table> tableMap;
 
     private ReflectiveSchema2(Object tableHolder, Map<String, Table> tableMap) {
         super();
-        this.target = tableHolder;
+        this.tableHolder = tableHolder;
         this.tableMap = tableMap;
     }
 
     @Override
     public String toString() {
-        return "ReflectiveSchema2(target=" + target + ")";
+        return "ReflectiveSchema2(target=" + tableHolder.getClass() + ")";
     }
 
     @Override
@@ -58,9 +57,11 @@ public class ReflectiveSchema2 extends AbstractSchema {
     }
 
     /**
+     * Infer the tables from the fields of a given object, and ultimately create a {@link ReflectiveSchema2} from it.
+     *
      * @param tableHolder An instance of a clas where all the fields represent tables.
      */
-    public static ReflectiveSchema2 create(Object tableHolder) {
+    public static ReflectiveSchema2 inferSchema(Object tableHolder) {
         Class<?> clazz = tableHolder.getClass();
 
         // Infer tables from the fields.
@@ -74,15 +75,15 @@ public class ReflectiveSchema2 extends AbstractSchema {
             } else {
                 throw new IllegalArgumentException("Only array types are supported");
             }
-            Object o;
+            Object arrayRepresentationOfTable;
             try {
-                o = field.get(tableHolder);
+                arrayRepresentationOfTable = field.get(tableHolder);
             } catch (IllegalAccessException e) {
                 throw new RuntimeException(
                         "Error while accessing field " + field, e);
             }
-            requireNonNull(o, () -> "field " + field + " is null for " + tableHolder);
-            var enumerable = toEnumerable(o);
+            requireNonNull(arrayRepresentationOfTable, () -> "field " + field + " is null for " + tableHolder);
+            var enumerable = (Enumerable<?>) Linq4j.asEnumerable((Object[]) arrayRepresentationOfTable);
             //noinspection rawtypes,unchecked
             Table table = new FieldTable(field, elementType, enumerable);
             tablesByName.put(fieldName, table);
@@ -119,32 +120,38 @@ public class ReflectiveSchema2 extends AbstractSchema {
         return new ReflectiveSchema2(tableHolder, tablesByName);
     }
 
-    private static Enumerable<?> toEnumerable(Object o) {
-        if (o.getClass().isArray()) {
-            if (o instanceof Object[]) {
-                return Linq4j.asEnumerable((Object[]) o);
-            } else {
-                return Linq4j.asEnumerable(Primitive.asList(o));
-            }
-        }
-        if (o instanceof Iterable) {
-            return Linq4j.asEnumerable((Iterable<?>) o);
-        }
-        throw new RuntimeException(
-                "Cannot convert " + o.getClass() + " into a Enumerable");
-    }
-
-    /** Table that is implemented by reading from a Java object. */
-    private static class ReflectiveTable<T>
-            extends AbstractQueryableTable
-            implements Table, ScannableTable {
+    /**
+     * Table based on a Java field.
+     *
+     * @param <T> element type
+     */
+    private static class FieldTable<T> extends AbstractQueryableTable implements Table, ScannableTable {
+        private final Field field;
         private final Enumerable<T> enumerable;
         private final Class<T> elementTypeClass;
+        private Statistic statistic;
 
-        ReflectiveTable(Class<T> elementType, Enumerable<T> enumerable) {
+        FieldTable(Field field, Class<T> elementType, Enumerable<T> enumerable) {
+            this(field, elementType, enumerable, Statistics.UNKNOWN);
+        }
+
+        FieldTable(Field field, Class<T> elementType, Enumerable<T> enumerable,
+                   Statistic statistic) {
             super(elementType);
-            this.enumerable = enumerable;
             this.elementTypeClass = elementType;
+            this.enumerable = enumerable;
+            this.field = field;
+            this.statistic = statistic;
+        }
+
+        @Override
+        public String toString() {
+            return "Relation {field=" + field.getName() + "}";
+        }
+
+        @Override
+        public Statistic getStatistic() {
+            return statistic;
         }
 
         @Override
@@ -169,37 +176,6 @@ public class ReflectiveSchema2 extends AbstractSchema {
                     return (Enumerator<X>) enumerable.enumerator();
                 }
             };
-        }
-    }
-
-    /**
-     * Table based on a Java field.
-     *
-     * @param <T> element type
-     */
-    private static class FieldTable<T> extends ReflectiveTable<T> {
-        private final Field field;
-        private Statistic statistic;
-
-        FieldTable(Field field, Class<T> elementType, Enumerable<T> enumerable) {
-            this(field, elementType, enumerable, Statistics.UNKNOWN);
-        }
-
-        FieldTable(Field field, Class<T> elementType, Enumerable<T> enumerable,
-                   Statistic statistic) {
-            super(elementType, enumerable);
-            this.field = field;
-            this.statistic = statistic;
-        }
-
-        @Override
-        public String toString() {
-            return "Relation {field=" + field.getName() + "}";
-        }
-
-        @Override
-        public Statistic getStatistic() {
-            return statistic;
         }
     }
 
