@@ -78,9 +78,6 @@ public class ReflectiveSchema2 extends AbstractSchema {
         for (Field field : clazz.getFields()) {
             final String fieldName = field.getName();
             final Table table = fieldRelation(field);
-            if (table == null) {
-                continue;
-            }
             builder.put(fieldName, table);
         }
         Map<String, Table> tableMap = builder.build();
@@ -95,8 +92,8 @@ public class ReflectiveSchema2 extends AbstractSchema {
                             "Error while accessing field " + field, e);
                 }
                 requireNonNull(rc, () -> "field must not be null: " + field);
-                FieldTable table =
-                        (FieldTable) tableMap.get(Util.last(rc.getSourceQualifiedName()));
+                FieldTable<?> table =
+                        (FieldTable<?>) tableMap.get(Util.last(rc.getSourceQualifiedName()));
                 assert table != null;
                 List<RelReferentialConstraint> referentialConstraints =
                         table.getStatistic().getReferentialConstraints();
@@ -158,11 +155,13 @@ public class ReflectiveSchema2 extends AbstractSchema {
      * Returns a table based on a particular field of this schema. If the
      * field is not of the right type to be a relation, returns null.
      */
-    private <T> Table fieldRelation(final Field field) {
-        final Type elementType = getElementType(field.getType());
-        if (!(elementType instanceof Class<?> elementTypeClass)) {
-            var msg = "A reflective schema is made up of instance fields (Class types) that represent tables. The field type '%s' is not supported".formatted(elementType);
-            throw new IllegalArgumentException(msg);
+    private Table fieldRelation(final Field field) {
+        Class<?> elementType;
+        Class<?> fieldType = field.getType();
+        if (fieldType.isArray()) {
+            elementType = fieldType.getComponentType();
+        } else {
+            throw new IllegalArgumentException("Only array types are supported");
         }
         Object o;
         try {
@@ -172,22 +171,9 @@ public class ReflectiveSchema2 extends AbstractSchema {
                     "Error while accessing field " + field, e);
         }
         requireNonNull(o, () -> "field " + field + " is null for " + target);
-        @SuppressWarnings("unchecked") var enumerable = (Enumerable<T>) toEnumerable(o);
-        return new FieldTable<>(field, elementTypeClass, enumerable);
-    }
-
-    /**
-     * Deduces the element type of a collection;
-     * same logic as {@link #toEnumerable}.
-     */
-    private static @Nullable Type getElementType(Class<?> clazz) {
-        if (clazz.isArray()) {
-            return clazz.getComponentType();
-        }
-        if (Iterable.class.isAssignableFrom(clazz)) {
-            return Object.class;
-        }
-        return null; // not a collection/array/iterable
+        var enumerable = toEnumerable(o);
+        //noinspection rawtypes,unchecked
+        return new FieldTable(field, elementType, enumerable);
     }
 
     private static Enumerable<?> toEnumerable(final Object o) {
@@ -206,13 +192,13 @@ public class ReflectiveSchema2 extends AbstractSchema {
     }
 
     /** Table that is implemented by reading from a Java object. */
-    private static class ReflectiveTable
+    private static class ReflectiveTable<T>
             extends AbstractQueryableTable
             implements Table, ScannableTable {
-        private final Enumerable<?> enumerable;
-        private final Class<?> elementTypeClass;
+        private final Enumerable<T> enumerable;
+        private final Class<T> elementTypeClass;
 
-        ReflectiveTable(Class<?> elementType, Enumerable<?> enumerable) {
+        ReflectiveTable(Class<T> elementType, Enumerable<T> enumerable) {
             super(elementType);
             this.enumerable = enumerable;
             this.elementTypeClass = elementType;
@@ -224,96 +210,22 @@ public class ReflectiveSchema2 extends AbstractSchema {
         }
 
         @Override
-        public Statistic getStatistic() {
-            return Statistics.UNKNOWN;
-        }
-
-        @Override
         public Enumerable<@Nullable Object[]> scan(DataContext root) {
             @SuppressWarnings("unchecked") var enumerableCast = (Enumerable<Object>) enumerable;
             return enumerableCast.select(new FieldSelector(elementTypeClass));
         }
 
         @Override
-        public <T> Queryable<T> asQueryable(QueryProvider queryProvider,
+        public <X> Queryable<X> asQueryable(QueryProvider queryProvider,
                                             SchemaPlus schema, String tableName) {
-            return new AbstractTableQueryable<T>(queryProvider, schema, this,
+            return new AbstractTableQueryable<>(queryProvider, schema, this,
                     tableName) {
                 @SuppressWarnings("unchecked")
                 @Override
-                public Enumerator<T> enumerator() {
-                    return (Enumerator<T>) enumerable.enumerator();
+                public Enumerator<X> enumerator() {
+                    return (Enumerator<X>) enumerable.enumerator();
                 }
             };
-        }
-    }
-
-    /**
-     * Factory that creates a schema by instantiating an object and looking at
-     * its public fields.
-     *
-     * <p>The following example instantiates a {@code FoodMart} object as a schema
-     * that contains tables called {@code EMPS} and {@code DEPTS} based on the
-     * object's fields.
-     *
-     * <blockquote><pre>
-     * schemas: [
-     *     {
-     *       name: "foodmart",
-     *       type: "custom",
-     *       factory: "org.apache.calcite.adapter.java.ReflectiveSchema$Factory",
-     *       operand: {
-     *         class: "com.acme.FoodMart",
-     *         staticMethod: "instance"
-     *       }
-     *     }
-     *   ]
-     * &nbsp;
-     * class FoodMart {
-     *   public static final FoodMart instance() {
-     *     return new FoodMart();
-     *   }
-     * &nbsp;
-     *   Employee[] EMPS;
-     *   Department[] DEPTS;
-     * }</pre></blockquote>
-     */
-    public static class Factory implements SchemaFactory {
-        @Override
-        public Schema create(SchemaPlus parentSchema, String name,
-                             Map<String, Object> operand) {
-            Class<?> clazz;
-            Object target;
-            final Object className = operand.get("class");
-            if (className != null) {
-                try {
-                    clazz = Class.forName((String) className);
-                } catch (ClassNotFoundException e) {
-                    throw new RuntimeException("Error loading class " + className, e);
-                }
-            } else {
-                throw new RuntimeException("Operand 'class' is required");
-            }
-            final Object methodName = operand.get("staticMethod");
-            if (methodName != null) {
-                try {
-                    //noinspection unchecked
-                    Method method = clazz.getMethod((String) methodName);
-                    target = method.invoke(null);
-                    requireNonNull(target, () -> "method " + method + " returns null");
-                } catch (Exception e) {
-                    throw new RuntimeException("Error invoking method " + methodName, e);
-                }
-            } else {
-                try {
-                    final Constructor<?> constructor = clazz.getConstructor();
-                    target = constructor.newInstance();
-                } catch (Exception e) {
-                    throw new RuntimeException("Error instantiating class " + className,
-                            e);
-                }
-            }
-            return new ReflectiveSchema2(target);
         }
     }
 
@@ -353,15 +265,15 @@ public class ReflectiveSchema2 extends AbstractSchema {
      *
      * @param <T> element type
      */
-    private static class FieldTable<T> extends ReflectiveTable {
+    private static class FieldTable<T> extends ReflectiveTable<T> {
         private final Field field;
         private Statistic statistic;
 
-        FieldTable(Field field, Class<?> elementType, Enumerable<T> enumerable) {
+        FieldTable(Field field, Class<T> elementType, Enumerable<T> enumerable) {
             this(field, elementType, enumerable, Statistics.UNKNOWN);
         }
 
-        FieldTable(Field field, Class<?> elementType, Enumerable<T> enumerable,
+        FieldTable(Field field, Class<T> elementType, Enumerable<T> enumerable,
                    Statistic statistic) {
             super(elementType, enumerable);
             this.field = field;
@@ -394,7 +306,7 @@ public class ReflectiveSchema2 extends AbstractSchema {
     private static class FieldSelector implements Function1<Object, @Nullable Object[]> {
         private final Field[] fields;
 
-        FieldSelector(Class elementType) {
+        FieldSelector(Class<?> elementType) {
             this.fields = elementType.getFields();
         }
 
