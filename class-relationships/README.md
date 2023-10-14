@@ -45,14 +45,20 @@ General clean-ups, TODOs and things I wish to implement for this project:
   at compile time.
 * [x] DONE Populate the `field` table with names and their owning class (NOT their declared class. that comes later). Also, write a `limit` query or something to exercise it.
 * [x] DONE (wow it executes slowly! 30+ seconds) Write a join query between `class` and `field`.
-* [ ] IN PROGRESS Research how the join is executed at runtime. Is there a bit set?
+* [ ] HOLD (Partially implemented. I need to switch gears and I think creating my own adapter which is a simple port of
+    ReflectiveSchema will help untangle the understanding weeds and open APIs that are closed.) Research how the join is executed at runtime. Is there a bit set?
   * DONE Reduce the dataset (parameterizable) so that we have a more manageable dataset to work with.
   * DONE (well I just increased the log level but when it comes to actual execution nothing is logged, probably for performance) Look into Calcite's documentation on debugging and tracing.
   * I profiled the program execution and this is the hot spot: `org.apache.calcite.interpreter.JoinNode.doJoin()`
-  * It is doing a nested loop join which is slow. From the trace logs I can tell that it estimates the table scan for each
-    table (field and class) to be 100 rows. I think  this is just a default. This is wrong of course because there are
+  * (Blocked. Statistics are inaccessible in ReflectiveSchema). It is doing a nested loop join which is slow. From the trace logs I can tell that it estimates the table scan for each
+    table (field and class) to be 100 rows. I think this is just a default. This is wrong of course because there are
     tens of thousands of rows total. If I can update the statistics, will the planner choose a better join algorithm
     like hash join?
+  * DONE Figure out where the 100 rows value is coming from and try to update it. Update: I think maybe I should
+    switch gears and try to learn about Calcite inner workings from a blessed entrypoint like a custom adapter, like the
+    CSV one. Because what I'm doing is jumping into the middle. Answer: https://github.com/apache/calcite/blob/54e3faf0618c25a63b1c40c0ec3855ce0b842127/core/src/main/java/org/apache/calcite/prepare/RelOptTableImpl.java#L243
 * [ ] Assuming that the join is not optimized (or even if it is?), write a custom optimizer rule to optimize the join.
   I want to know the options for implementing joins where there isn't a join key but instead there is a direct pointer
   (object-to-object reference). Or maybe I'll realize that my question doesn't even make sense.
+* [ ] Custom adapter which is mostly just a port of ReflectiveSchema. I need support for statistics, but it would also
+  be nice if it support record types.

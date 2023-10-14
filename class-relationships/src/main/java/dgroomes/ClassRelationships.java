@@ -17,9 +17,9 @@ public class ClassRelationships {
     @Override
     public String toString() {
         return "ClassRelationships{" +
-                "classes=" + ClassRelationshipsRunner.formatInteger(classes.length) +
-                ", fields=" + ClassRelationshipsRunner.formatInteger(fields.length) +
-                ", methods=" + ClassRelationshipsRunner.formatInteger(methods.length) +
+                "classes=" + Util.formatInteger(classes.length) +
+                ", fields=" + Util.formatInteger(fields.length) +
+                ", methods=" + Util.formatInteger(methods.length) +
                 '}';
     }
 }
