@@ -26,6 +26,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -46,16 +47,14 @@ import static java.util.Objects.requireNonNull;
 public class ReflectiveSchema2 extends AbstractSchema {
     private final Class<?> clazz;
     private final Object target;
-    private Map<String, Table> tableMap;
+    private final Map<String, Table> tableMap;
     private Multimap<String, Function> functionMap;
 
-    /**
-     * @param tableHolder An instance of a clas where all the fields represent tables.
-     */
-    public ReflectiveSchema2(Object tableHolder) {
+    private ReflectiveSchema2(Object tableHolder, Map<String, Table> tableMap) {
         super();
         this.clazz = tableHolder.getClass();
         this.target = tableHolder;
+        this.tableMap = tableMap;
     }
 
     @Override
@@ -75,33 +74,54 @@ public class ReflectiveSchema2 extends AbstractSchema {
 
     @Override
     protected Map<String, Table> getTableMap() {
-        if (tableMap == null) {
-            tableMap = createTableMap();
-        }
         return tableMap;
     }
 
-    private Map<String, Table> createTableMap() {
-        final ImmutableMap.Builder<String, Table> builder = ImmutableMap.builder();
+
+    /**
+     * @param tableHolder An instance of a clas where all the fields represent tables.
+     */
+    public static ReflectiveSchema2 create(Object tableHolder) {
+        Class<?> clazz = tableHolder.getClass();
+
+        // Infer tables from the fields.
+        Map<String, Table> tablesByName = new HashMap<>();
         for (Field field : clazz.getFields()) {
-            final String fieldName = field.getName();
-            final Table table = fieldRelation(field);
-            builder.put(fieldName, table);
+            String fieldName = field.getName();
+            Class<?> elementType;
+            Class<?> fieldType = field.getType();
+            if (fieldType.isArray()) {
+                elementType = fieldType.getComponentType();
+            } else {
+                throw new IllegalArgumentException("Only array types are supported");
+            }
+            Object o;
+            try {
+                o = field.get(tableHolder);
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException(
+                        "Error while accessing field " + field, e);
+            }
+            requireNonNull(o, () -> "field " + field + " is null for " + tableHolder);
+            var enumerable = toEnumerable(o);
+            //noinspection rawtypes,unchecked
+            Table table = new FieldTable(field, elementType, enumerable);
+            tablesByName.put(fieldName, table);
         }
-        Map<String, Table> tableMap = builder.build();
+
         // Unique-Key - Foreign-Key
         for (Field field : clazz.getFields()) {
             if (RelReferentialConstraint.class.isAssignableFrom(field.getType())) {
                 RelReferentialConstraint rc;
                 try {
-                    rc = (RelReferentialConstraint) field.get(target);
+                    rc = (RelReferentialConstraint) field.get(tableHolder);
                 } catch (IllegalAccessException e) {
                     throw new RuntimeException(
                             "Error while accessing field " + field, e);
                 }
                 requireNonNull(rc, () -> "field must not be null: " + field);
                 FieldTable<?> table =
-                        (FieldTable<?>) tableMap.get(Util.last(rc.getSourceQualifiedName()));
+                        (FieldTable<?>) tablesByName.get(Util.last(rc.getSourceQualifiedName()));
                 assert table != null;
                 List<RelReferentialConstraint> referentialConstraints =
                         table.getStatistic().getReferentialConstraints();
@@ -116,7 +136,8 @@ public class ReflectiveSchema2 extends AbstractSchema {
                                                 Collections.singleton(rc))));
             }
         }
-        return tableMap;
+
+        return new ReflectiveSchema2(tableHolder, tablesByName);
     }
 
     @Override
@@ -128,16 +149,16 @@ public class ReflectiveSchema2 extends AbstractSchema {
     }
 
     private Multimap<String, Function> createFunctionMap() {
-        final ImmutableMultimap.Builder<String, Function> builder =
+        ImmutableMultimap.Builder<String, Function> builder =
                 ImmutableMultimap.builder();
         for (Method method : clazz.getMethods()) {
-            final String methodName = method.getName();
+            String methodName = method.getName();
             if (method.getDeclaringClass() == Object.class
                     || methodName.equals("toString")) {
                 continue;
             }
             if (TranslatableTable.class.isAssignableFrom(method.getReturnType())) {
-                final TableMacro tableMacro =
+                TableMacro tableMacro =
                         new MethodTableMacro(this, method);
                 builder.put(methodName, tableMacro);
             }
@@ -159,32 +180,7 @@ public class ReflectiveSchema2 extends AbstractSchema {
                 target.getClass());
     }
 
-    /**
-     * Returns a table based on a particular field of this schema. If the
-     * field is not of the right type to be a relation, returns null.
-     */
-    private Table fieldRelation(final Field field) {
-        Class<?> elementType;
-        Class<?> fieldType = field.getType();
-        if (fieldType.isArray()) {
-            elementType = fieldType.getComponentType();
-        } else {
-            throw new IllegalArgumentException("Only array types are supported");
-        }
-        Object o;
-        try {
-            o = field.get(target);
-        } catch (IllegalAccessException e) {
-            throw new RuntimeException(
-                    "Error while accessing field " + field, e);
-        }
-        requireNonNull(o, () -> "field " + field + " is null for " + target);
-        var enumerable = toEnumerable(o);
-        //noinspection rawtypes,unchecked
-        return new FieldTable(field, elementType, enumerable);
-    }
-
-    private static Enumerable<?> toEnumerable(final Object o) {
+    private static Enumerable<?> toEnumerable(Object o) {
         if (o.getClass().isArray()) {
             if (o instanceof Object[]) {
                 return Linq4j.asEnumerable((Object[]) o);
@@ -256,9 +252,9 @@ public class ReflectiveSchema2 extends AbstractSchema {
         }
 
         @Override
-        public TranslatableTable apply(final List<? extends @Nullable Object> arguments) {
+        public TranslatableTable apply(List<? extends @Nullable Object> arguments) {
             try {
-                final Object o = method.invoke(schema.getTarget(), arguments.toArray());
+                Object o = method.invoke(schema.getTarget(), arguments.toArray());
                 requireNonNull(o,
                         () -> "method " + method + " returned null for arguments " + arguments);
                 return (TranslatableTable) o;
@@ -321,7 +317,7 @@ public class ReflectiveSchema2 extends AbstractSchema {
         @Override
         public @Nullable Object[] apply(Object o) {
             try {
-                final @Nullable Object[] objects = new Object[fields.length];
+                @Nullable Object[] objects = new Object[fields.length];
                 for (int i = 0; i < fields.length; i++) {
                     objects[i] = fields[i].get(o);
                 }

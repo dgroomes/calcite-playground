@@ -2,7 +2,6 @@ package dgroomes;
 
 import io.github.classgraph.ClassGraph;
 import io.github.classgraph.ClassInfoList;
-import org.apache.calcite.adapter.java.ReflectiveSchema;
 import org.apache.calcite.avatica.util.Casing;
 import org.apache.calcite.interpreter.Interpreter;
 import org.apache.calcite.plan.RelOptUtil;
@@ -62,7 +61,7 @@ public class ClassRelationshipsRunner {
 
         var rootSchema = Frameworks.createRootSchema(true);
 
-        var reflectiveSchema = new ReflectiveSchema2(classRelationships);
+        var reflectiveSchema = ReflectiveSchema2.create(classRelationships);
         classRelationshipsSchema = rootSchema.add("class-relationships", reflectiveSchema);
 
         frameworkConfig = Frameworks.newConfigBuilder().defaultSchema(classRelationshipsSchema)
