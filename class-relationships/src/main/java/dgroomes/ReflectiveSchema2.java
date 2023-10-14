@@ -1,30 +1,23 @@
 package dgroomes;
 
-import com.google.common.collect.*;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 import org.apache.calcite.DataContext;
-import org.apache.calcite.adapter.enumerable.EnumUtils;
 import org.apache.calcite.adapter.java.AbstractQueryableTable;
 import org.apache.calcite.adapter.java.JavaTypeFactory;
 import org.apache.calcite.linq4j.*;
 import org.apache.calcite.linq4j.function.Function1;
-import org.apache.calcite.linq4j.tree.Expression;
-import org.apache.calcite.linq4j.tree.Expressions;
 import org.apache.calcite.linq4j.tree.Primitive;
 import org.apache.calcite.rel.RelReferentialConstraint;
 import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rel.type.RelDataTypeFactory;
-import org.apache.calcite.schema.Table;
 import org.apache.calcite.schema.*;
 import org.apache.calcite.schema.impl.AbstractSchema;
 import org.apache.calcite.schema.impl.AbstractTableQueryable;
-import org.apache.calcite.schema.impl.ReflectiveFunctionBase;
-import org.apache.calcite.util.BuiltInMethod;
 import org.apache.calcite.util.Util;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -45,14 +38,11 @@ import static java.util.Objects.requireNonNull;
  * </pre>
  */
 public class ReflectiveSchema2 extends AbstractSchema {
-    private final Class<?> clazz;
     private final Object target;
     private final Map<String, Table> tableMap;
-    private Multimap<String, Function> functionMap;
 
     private ReflectiveSchema2(Object tableHolder, Map<String, Table> tableMap) {
         super();
-        this.clazz = tableHolder.getClass();
         this.target = tableHolder;
         this.tableMap = tableMap;
     }
@@ -62,21 +52,10 @@ public class ReflectiveSchema2 extends AbstractSchema {
         return "ReflectiveSchema2(target=" + target + ")";
     }
 
-    /**
-     * Returns the wrapped object.
-     *
-     * <p>May not appear to be used, but is used in generated code via
-     * {@link BuiltInMethod#REFLECTIVE_SCHEMA_GET_TARGET}.
-     */
-    public Object getTarget() {
-        return target;
-    }
-
     @Override
     protected Map<String, Table> getTableMap() {
         return tableMap;
     }
-
 
     /**
      * @param tableHolder An instance of a clas where all the fields represent tables.
@@ -140,46 +119,6 @@ public class ReflectiveSchema2 extends AbstractSchema {
         return new ReflectiveSchema2(tableHolder, tablesByName);
     }
 
-    @Override
-    protected Multimap<String, Function> getFunctionMultimap() {
-        if (functionMap == null) {
-            functionMap = createFunctionMap();
-        }
-        return functionMap;
-    }
-
-    private Multimap<String, Function> createFunctionMap() {
-        ImmutableMultimap.Builder<String, Function> builder =
-                ImmutableMultimap.builder();
-        for (Method method : clazz.getMethods()) {
-            String methodName = method.getName();
-            if (method.getDeclaringClass() == Object.class
-                    || methodName.equals("toString")) {
-                continue;
-            }
-            if (TranslatableTable.class.isAssignableFrom(method.getReturnType())) {
-                TableMacro tableMacro =
-                        new MethodTableMacro(this, method);
-                builder.put(methodName, tableMacro);
-            }
-        }
-        return builder.build();
-    }
-
-    /**
-     * Returns an expression for the object wrapped by this schema (not the
-     * schema itself).
-     */
-    Expression getTargetExpression(@Nullable SchemaPlus parentSchema, String name) {
-        return EnumUtils.convert(
-                Expressions.call(
-                        Schemas.unwrap(
-                                getExpression(parentSchema, name),
-                                ReflectiveSchema2.class),
-                        BuiltInMethod.REFLECTIVE_SCHEMA_GET_TARGET.method),
-                target.getClass());
-    }
-
     private static Enumerable<?> toEnumerable(Object o) {
         if (o.getClass().isArray()) {
             if (o instanceof Object[]) {
@@ -233,37 +172,6 @@ public class ReflectiveSchema2 extends AbstractSchema {
         }
     }
 
-    /** Table macro based on a Java method. */
-    private static class MethodTableMacro extends ReflectiveFunctionBase
-            implements TableMacro {
-        private final ReflectiveSchema2 schema;
-
-        MethodTableMacro(ReflectiveSchema2 schema, Method method) {
-            super(method);
-            this.schema = schema;
-            assert TranslatableTable.class.isAssignableFrom(method.getReturnType())
-                    : "Method should return TranslatableTable so the macro can be "
-                    + "expanded";
-        }
-
-        @Override
-        public String toString() {
-            return "Member {method=" + method + "}";
-        }
-
-        @Override
-        public TranslatableTable apply(List<? extends @Nullable Object> arguments) {
-            try {
-                Object o = method.invoke(schema.getTarget(), arguments.toArray());
-                requireNonNull(o,
-                        () -> "method " + method + " returned null for arguments " + arguments);
-                return (TranslatableTable) o;
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
     /**
      * Table based on a Java field.
      *
@@ -292,17 +200,6 @@ public class ReflectiveSchema2 extends AbstractSchema {
         @Override
         public Statistic getStatistic() {
             return statistic;
-        }
-
-        @Override
-        public Expression getExpression(SchemaPlus schema,
-                                        String tableName, Class clazz) {
-            ReflectiveSchema2 reflectiveSchema =
-                    requireNonNull(schema.unwrap(ReflectiveSchema2.class),
-                            () -> "schema.unwrap(ReflectiveSchema2.class) for " + schema);
-            return Expressions.field(
-                    reflectiveSchema.getTargetExpression(
-                            schema.getParentSchema(), schema.getName()), field);
         }
     }
 
