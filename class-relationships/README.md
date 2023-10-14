@@ -60,5 +60,9 @@ General clean-ups, TODOs and things I wish to implement for this project:
 * [ ] Assuming that the join is not optimized (or even if it is?), write a custom optimizer rule to optimize the join.
   I want to know the options for implementing joins where there isn't a join key but instead there is a direct pointer
   (object-to-object reference). Or maybe I'll realize that my question doesn't even make sense.
-* [ ] Custom adapter which is mostly just a port of ReflectiveSchema. I need support for statistics, but it would also
-  be nice if it support record types.
+* [ ] IN PROGRESS Custom adapter which is mostly just a port of ReflectiveSchema. I need support for statistics, but it would also
+  be nice if it supported record types.
+  * DONE "Scaffold by copy"
+  * Make it my own. Refactoring/restructuring to my liking.
+  * Support record types
+  * Support statistics
