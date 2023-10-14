@@ -22,7 +22,9 @@ import org.apache.calcite.util.BuiltInMethod;
 import org.apache.calcite.util.Util;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-import java.lang.reflect.*;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +34,14 @@ import static java.util.Objects.requireNonNull;
 /**
  * This is my port of {@link org.apache.calcite.adapter.java.ReflectiveSchema}. I want this port to support statistics
  * and Java record classes.
+ * <p>
+ * A {@link ReflectiveSchema2} is defined by on object whose public fields themselves represent tables. For example:
+ * <pre>
+ *     class Graph {
+ *         public final Node[] nodes;
+ *         public final Edge[] edges;
+ *     }
+ * </pre>
  */
 public class ReflectiveSchema2 extends AbstractSchema {
     private final Class<?> clazz;
@@ -40,19 +50,17 @@ public class ReflectiveSchema2 extends AbstractSchema {
     private Multimap<String, Function> functionMap;
 
     /**
-     * Creates a ReflectiveSchema.
-     *
-     * @param target Object whose fields will be sub-objects of the schema
+     * @param tableHolder An instance of a clas where all the fields represent tables.
      */
-    public ReflectiveSchema2(Object target) {
+    public ReflectiveSchema2(Object tableHolder) {
         super();
-        this.clazz = target.getClass();
-        this.target = target;
+        this.clazz = tableHolder.getClass();
+        this.target = tableHolder;
     }
 
     @Override
     public String toString() {
-        return "ReflectiveSchema(target=" + target + ")";
+        return "ReflectiveSchema2(target=" + target + ")";
     }
 
     /**
@@ -295,7 +303,7 @@ public class ReflectiveSchema2 extends AbstractSchema {
                                         String tableName, Class clazz) {
             ReflectiveSchema2 reflectiveSchema =
                     requireNonNull(schema.unwrap(ReflectiveSchema2.class),
-                            () -> "schema.unwrap(ReflectiveSchema.class) for " + schema);
+                            () -> "schema.unwrap(ReflectiveSchema2.class) for " + schema);
             return Expressions.field(
                     reflectiveSchema.getTargetExpression(
                             schema.getParentSchema(), schema.getName()), field);
