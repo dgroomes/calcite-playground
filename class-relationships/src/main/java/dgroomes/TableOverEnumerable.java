@@ -4,7 +4,6 @@ import org.apache.calcite.DataContext;
 import org.apache.calcite.adapter.java.AbstractQueryableTable;
 import org.apache.calcite.adapter.java.JavaTypeFactory;
 import org.apache.calcite.linq4j.*;
-import org.apache.calcite.linq4j.function.Function1;
 import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rel.type.RelDataTypeFactory;
 import org.apache.calcite.schema.*;
@@ -20,28 +19,46 @@ import static java.util.Objects.requireNonNull;
  * Table backed by an enumerable.
  */
 public class TableOverEnumerable<T> extends AbstractQueryableTable implements Table, ScannableTable {
-    private final Enumerable<T> enumerable;
-    private final Enumerable<@Nullable Object[]> enumerableObjects;
+    private final Enumerable<T> rowAsTEnumerable;
+    private final Enumerable<@Nullable Object[]> rowAsArrayEnumerable;
     private final Statistic statistic;
 
-    private TableOverEnumerable(Class<T> elementType, Enumerable<T> enumerable,
-                                Enumerable<@Nullable Object[]> enumerableObjects, Statistic statistic) {
+    private TableOverEnumerable(Class<T> elementType, Enumerable<T> rowAsTEnumerable,
+                                Enumerable<@Nullable Object[]> rowAsArrayEnumerable, Statistic statistic) {
         super(elementType);
-        this.enumerable = enumerable;
-        this.enumerableObjects = enumerableObjects;
+        this.rowAsTEnumerable = rowAsTEnumerable;
+        this.rowAsArrayEnumerable = rowAsArrayEnumerable;
         this.statistic = statistic;
     }
 
+    /**
+     * Create a Calcite {@link Table} backed by a {@link List} of objects.
+     */
     public static <T> Table listAsTable(List<T> rows, Class<T> elementType) {
         requireNonNull(rows);
 
-        // This is odd. Turning a "List<T>" into an "Enumerable<T>" and then into an "Enumerable<Object>". It's too
-        // much. But this is what Calcite does in the ReflectiveSchema and related machinery.
-        Enumerable<T> enumerable = Linq4j.asEnumerable(rows);
-        FieldSelector fieldSelector = new FieldSelector(elementType);
-        @SuppressWarnings("unchecked") var enumerableCast = (Enumerable<Object>) enumerable;
-        Enumerable<Object[]> enumerableObjects = enumerableCast.select(fieldSelector);
-        return new TableOverEnumerable<>(elementType, enumerable, enumerableObjects, Statistics.UNKNOWN);
+        // This enumerable of "T" is a nice high level representation of rows of data. But, Calcite also needs a
+        // somewhat more primitive enumerable of "Object[]" to be able to do its work. Each "Object[]" is the column
+        // values of a row.
+        Enumerable<T> rowAsTEnumerable = Linq4j.asEnumerable(rows);
+        Enumerable<Object[]> rowAsArrayEnumerable;
+
+        {
+            Field[] fields = elementType.getFields();
+            rowAsArrayEnumerable = rowAsTEnumerable.select(o -> {
+                try {
+                    Object[] objects = new Object[fields.length];
+                    for (int i = 0; i < fields.length; i++) {
+                        objects[i] = fields[i].get(o);
+                    }
+                    return objects;
+                } catch (IllegalAccessException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+        }
+
+        return new TableOverEnumerable<>(elementType, rowAsTEnumerable, rowAsArrayEnumerable, Statistics.UNKNOWN);
     }
 
     @Override
@@ -56,7 +73,7 @@ public class TableOverEnumerable<T> extends AbstractQueryableTable implements Ta
 
     @Override
     public Enumerable<@Nullable Object[]> scan(DataContext root) {
-        return enumerableObjects;
+        return rowAsArrayEnumerable;
     }
 
     @Override
@@ -67,30 +84,8 @@ public class TableOverEnumerable<T> extends AbstractQueryableTable implements Ta
             @SuppressWarnings("unchecked")
             @Override
             public Enumerator<X> enumerator() {
-                return (Enumerator<X>) enumerable.enumerator();
+                return (Enumerator<X>) rowAsTEnumerable.enumerator();
             }
         };
-    }
-
-    /** Function that returns an array of a given object's field values. */
-    private static class FieldSelector implements Function1<Object, @Nullable Object[]> {
-        private final Field[] fields;
-
-        FieldSelector(Class<?> elementType) {
-            this.fields = elementType.getFields();
-        }
-
-        @Override
-        public @Nullable Object[] apply(Object o) {
-            try {
-                @Nullable Object[] objects = new Object[fields.length];
-                for (int i = 0; i < fields.length; i++) {
-                    objects[i] = fields[i].get(o);
-                }
-                return objects;
-            } catch (IllegalAccessException e) {
-                throw new RuntimeException(e);
-            }
-        }
     }
 }
