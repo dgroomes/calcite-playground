@@ -15,7 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -30,6 +29,10 @@ public class ClassRelationshipsRunner {
     private final int takeFirstNClasses;
     private FrameworkConfig frameworkConfig;
     private SchemaPlus classRelationshipsSchema;
+
+    public final List<ClassInfo> classes = new ArrayList<>();
+    public final List<FieldInfo> fields = new ArrayList<>();
+    public final List<MethodInfo> methods = new ArrayList<>();
 
 
     private static final Logger log = LoggerFactory.getLogger(ClassRelationshipsRunner.class);
@@ -60,15 +63,15 @@ public class ClassRelationshipsRunner {
     }
 
     public void run() {
-        ClassRelationships classRelationships = buildDataSet();
-        log.info("Built the final in-memory data set: {}", classRelationships);
+        buildDataSet();
+        log.info("Built the final in-memory data set. {} class, {} fields, {} methods", Util.formatInteger(classes.size()), Util.formatInteger(fields.size()), Util.formatInteger(methods.size()));
 
         var rootSchema = Frameworks.createRootSchema(true);
 
         var reflectiveSchema = create(List.of(
-                listAsTable("classes", classRelationships.classes, ClassInfo.class),
-                listAsTable("fields", classRelationships.fields, FieldInfo.class),
-                listAsTable("methods", classRelationships.methods, MethodInfo.class)
+                listAsTable("classes", classes, ClassInfo.class),
+                listAsTable("fields", fields, FieldInfo.class),
+                listAsTable("methods", methods, MethodInfo.class)
         ));
         classRelationshipsSchema = rootSchema.add("class-relationships", reflectiveSchema);
 
@@ -85,16 +88,13 @@ public class ClassRelationshipsRunner {
         queryClassesWithMostFields();
     }
 
-    private ClassRelationships buildDataSet() {
+    private void buildDataSet() {
         ClassGraph classGraph = new ClassGraph().enableSystemJarsAndModules().enableFieldInfo();
 
         ClassInfoList classInfos;
         try (var scanResult = classGraph.scan()) {
             classInfos = scanResult.getAllClasses();
         }
-
-        List<ClassInfo> classes = new ArrayList<>();
-        List<FieldInfo> fields = new ArrayList<>();
 
         for (int i = 0; i < classInfos.size() && i < takeFirstNClasses; i++) {
             var classInfo_ = classInfos.get(i);
@@ -105,15 +105,10 @@ public class ClassRelationshipsRunner {
             }
             classes.add(classInfo);
         }
-
-        return new ClassRelationships(
-                classes,
-                fields,
-                Collections.emptyList());
     }
 
     /**
-     * Execute a SQL query over the {@link ClassRelationships} data set.
+     * Execute a SQL query over the "class relationships" data set.
      *
      * @param sql        The SQL string to execute.
      * @param rowHandler A function to handle each row of the result.
