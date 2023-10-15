@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -99,9 +100,9 @@ public class ClassRelationshipsRunner {
         }
 
         return new ClassRelationships(
-                classes.toArray(ClassInfo[]::new),
-                fields.toArray(FieldInfo[]::new),
-                new MethodInfo[]{});
+                classes,
+                fields,
+                Collections.emptyList());
     }
 
     /**

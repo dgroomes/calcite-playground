@@ -17,6 +17,8 @@ import org.apache.calcite.util.Util;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -70,20 +72,30 @@ public class ReflectiveSchema2 extends AbstractSchema {
             String fieldName = field.getName();
             Class<?> elementType;
             Class<?> fieldType = field.getType();
-            if (fieldType.isArray()) {
-                elementType = fieldType.getComponentType();
+            if (fieldType.isAssignableFrom(List.class)) {
+                Type genericFieldType = field.getGenericType();
+
+                // Ensure the generic field type is indeed a ParameterizedType
+                // (e.g., List<String> as opposed to a raw List)
+                if (!(genericFieldType instanceof ParameterizedType parameterizedType)) {
+                    throw new IllegalArgumentException("Expected a generic type parameter (e.g. List<Foo>) but found a raw List for field " + field);
+                }
+
+                Type[] fieldArgTypes = parameterizedType.getActualTypeArguments();
+                elementType = (Class<?>) fieldArgTypes[0];
             } else {
-                throw new IllegalArgumentException("Only array types are supported");
+                throw new IllegalArgumentException("Only list types are supported for inferring tables from fields.");
             }
-            Object arrayRepresentationOfTable;
+
+            List<?> listRepresentationOfTable;
             try {
-                arrayRepresentationOfTable = field.get(tableHolder);
+                listRepresentationOfTable = (List<?>) field.get(tableHolder);
             } catch (IllegalAccessException e) {
                 throw new RuntimeException(
                         "Error while accessing field " + field, e);
             }
-            requireNonNull(arrayRepresentationOfTable, () -> "field " + field + " is null for " + tableHolder);
-            var enumerable = (Enumerable<?>) Linq4j.asEnumerable((Object[]) arrayRepresentationOfTable);
+            requireNonNull(listRepresentationOfTable, () -> "field " + field + " is null for " + tableHolder);
+            var enumerable = (Enumerable<?>) Linq4j.asEnumerable(listRepresentationOfTable);
             //noinspection rawtypes,unchecked
             Table table = new FieldTable(field, elementType, enumerable);
             tablesByName.put(fieldName, table);
