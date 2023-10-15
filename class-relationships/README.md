@@ -60,11 +60,11 @@ General clean-ups, TODOs and things I wish to implement for this project:
 * [ ] Assuming that the join is not optimized (or even if it is?), write a custom optimizer rule to optimize the join.
   I want to know the options for implementing joins where there isn't a join key but instead there is a direct pointer
   (object-to-object reference). Or maybe I'll realize that my question doesn't even make sense.
-* [ ] IN PROGRESS Custom adapter which is mostly just a port of ReflectiveSchema. I need support for statistics, but it would also
-  be nice if it supported record types.
+* [ ] IN PROGRESS Custom table implementation which is mostly just a port of ReflectiveSchema. I need support for statistics.
   * DONE "Scaffold by copy"
   * DONE Make it my own. Refactoring/restructuring to my liking. Update: this is the second time I've gone down
     this road. I made a custom schema in my `csv/` subproject. It makes me pause, but not sure what the lesson is.
   * DONE Support only lists and not arrays.
-  * Support record types
+  * SKIP (I totally forgot that records are impractical if I ever want to model instance-to-instance
+    relationships. Like MethodInfo's List<ClassInfo> field. I make this mistake very often. How can I learn?) Support record types
   * Support statistics
