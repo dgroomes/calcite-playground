@@ -69,4 +69,6 @@ General clean-ups, TODOs and things I wish to implement for this project:
     relationships. Like MethodInfo's List<ClassInfo> field. I make this mistake very often. How can I learn?) Support record types
   * DONE I want less reflection. I want reflection only on the table-as-a-class classes, and I don't need it on
     th schema-as-a-class class.
-  * Support statistics
+  * IN PROGRESS Support statistics
+    * We want to go from the current execution speed (slow): `Query executed in PT33.866871S.` to a few hundred ms. This
+      is small data after all.

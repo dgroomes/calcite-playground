@@ -17,6 +17,8 @@ import org.apache.calcite.tools.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -66,8 +68,6 @@ public class ClassRelationshipsRunner {
     }
 
     public void run() {
-        log.info("Built the final in-memory data set. {} class, {} fields, {} methods", Util.formatInteger(classes.size()), Util.formatInteger(fields.size()), Util.formatInteger(methods.size()));
-
         // (Note: it's surprisingly verbose to wire up a Calcite schema)
         SchemaPlus rootSchema = Frameworks.createRootSchema(true);
         Schema classRelationshipsSchema_nonPlus = buildDataSetAndSchema();
@@ -104,6 +104,8 @@ public class ClassRelationshipsRunner {
             classes.add(classInfo);
         }
 
+        log.info("Built the final in-memory data set. {} class, {} fields, {} methods", Util.formatInteger(classes.size()), Util.formatInteger(fields.size()), Util.formatInteger(methods.size()));
+
         Map<String, Table> tablesByName = Map.of(
                 "classes", listAsTable(classes, ClassInfo.class),
                 "fields", listAsTable(fields, FieldInfo.class),
@@ -136,10 +138,13 @@ public class ClassRelationshipsRunner {
         }
 
         DriverlessDataContext dataContext = new DriverlessDataContext(classRelationshipsSchema, node);
-        log.info("Query execution starting...");
+        var now = Instant.now();
         try (Interpreter interpreter = new Interpreter(dataContext, node)) {
             interpreter.forEach(rowHandler);
-            log.info("Query execution complete.");
+
+            var end = Instant.now();
+            var duration = Duration.between(now, end);
+            log.info("Query executed in {}.", duration);
         }
     }
 
