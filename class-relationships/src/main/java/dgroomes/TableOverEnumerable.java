@@ -58,7 +58,14 @@ public class TableOverEnumerable<T> extends AbstractQueryableTable implements Ta
             });
         }
 
-        return new TableOverEnumerable<>(elementType, rowAsTEnumerable, rowAsArrayEnumerable, Statistics.UNKNOWN);
+        var statistic = new Statistic() {
+            @Override
+            public Double getRowCount() {
+                return (double) rows.size();
+            }
+        };
+
+        return new TableOverEnumerable<>(elementType, rowAsTEnumerable, rowAsArrayEnumerable, statistic);
     }
 
     @Override

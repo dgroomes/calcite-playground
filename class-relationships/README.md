@@ -60,7 +60,7 @@ General clean-ups, TODOs and things I wish to implement for this project:
 * [ ] Assuming that the join is not optimized (or even if it is?), write a custom optimizer rule to optimize the join.
   I want to know the options for implementing joins where there isn't a join key but instead there is a direct pointer
   (object-to-object reference). Or maybe I'll realize that my question doesn't even make sense.
-* [ ] IN PROGRESS Custom table implementation which is mostly just a port of ReflectiveSchema. I need support for statistics.
+* [x] DONE Custom table implementation which is mostly just a port of ReflectiveSchema. I need support for statistics.
   * DONE "Scaffold by copy"
   * DONE Make it my own. Refactoring/restructuring to my liking. Update: this is the second time I've gone down
     this road. I made a custom schema in my `csv/` subproject. It makes me pause, but not sure what the lesson is.
@@ -69,6 +69,7 @@ General clean-ups, TODOs and things I wish to implement for this project:
     relationships. Like MethodInfo's List<ClassInfo> field. I make this mistake very often. How can I learn?) Support record types
   * DONE I want less reflection. I want reflection only on the table-as-a-class classes, and I don't need it on
     th schema-as-a-class class.
-  * IN PROGRESS Support statistics
+  * DONE Support statistics (row count at least)
     * We want to go from the current execution speed (slow): `Query executed in PT33.866871S.` to a few hundred ms. This
       is small data after all.
+    * DONE (this had no effect on speed, unfortunately. why is it so slow?) row count
