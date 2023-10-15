@@ -19,6 +19,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 
+import static dgroomes.ReflectiveSchema2.create;
+import static dgroomes.ReflectiveSchema2.listAsTable;
+
 /**
  * Please see the README for more context.
  */
@@ -62,7 +65,11 @@ public class ClassRelationshipsRunner {
 
         var rootSchema = Frameworks.createRootSchema(true);
 
-        var reflectiveSchema = ReflectiveSchema2.inferSchema(classRelationships);
+        var reflectiveSchema = create(List.of(
+                listAsTable("classes", classRelationships.classes, ClassInfo.class),
+                listAsTable("fields", classRelationships.fields, FieldInfo.class),
+                listAsTable("methods", classRelationships.methods, MethodInfo.class)
+        ));
         classRelationshipsSchema = rootSchema.add("class-relationships", reflectiveSchema);
 
         frameworkConfig = Frameworks.newConfigBuilder().defaultSchema(classRelationshipsSchema)

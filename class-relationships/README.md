@@ -67,4 +67,6 @@ General clean-ups, TODOs and things I wish to implement for this project:
   * DONE Support only lists and not arrays.
   * SKIP (I totally forgot that records are impractical if I ever want to model instance-to-instance
     relationships. Like MethodInfo's List<ClassInfo> field. I make this mistake very often. How can I learn?) Support record types
+  * IN PROGRESS I want less reflection. I want reflection only on the table-as-a-class classes, and I don't need it on
+    th schema-as-a-class class.
   * Support statistics
