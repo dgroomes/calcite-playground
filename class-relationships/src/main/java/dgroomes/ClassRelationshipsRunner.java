@@ -6,7 +6,10 @@ import org.apache.calcite.avatica.util.Casing;
 import org.apache.calcite.interpreter.Interpreter;
 import org.apache.calcite.plan.RelOptUtil;
 import org.apache.calcite.rel.RelNode;
+import org.apache.calcite.schema.Schema;
 import org.apache.calcite.schema.SchemaPlus;
+import org.apache.calcite.schema.Table;
+import org.apache.calcite.schema.impl.AbstractSchema;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.parser.SqlParseException;
 import org.apache.calcite.sql.parser.SqlParser;
@@ -16,10 +19,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
-import static dgroomes.ReflectiveSchema2.create;
-import static dgroomes.ReflectiveSchema2.listAsTable;
+import static dgroomes.TableOverEnumerable.listAsTable;
 
 /**
  * Please see the README for more context.
@@ -63,17 +66,12 @@ public class ClassRelationshipsRunner {
     }
 
     public void run() {
-        buildDataSet();
         log.info("Built the final in-memory data set. {} class, {} fields, {} methods", Util.formatInteger(classes.size()), Util.formatInteger(fields.size()), Util.formatInteger(methods.size()));
 
-        var rootSchema = Frameworks.createRootSchema(true);
-
-        var reflectiveSchema = create(List.of(
-                listAsTable("classes", classes, ClassInfo.class),
-                listAsTable("fields", fields, FieldInfo.class),
-                listAsTable("methods", methods, MethodInfo.class)
-        ));
-        classRelationshipsSchema = rootSchema.add("class-relationships", reflectiveSchema);
+        // (Note: it's surprisingly verbose to wire up a Calcite schema)
+        SchemaPlus rootSchema = Frameworks.createRootSchema(true);
+        Schema classRelationshipsSchema_nonPlus = buildDataSetAndSchema();
+        classRelationshipsSchema = rootSchema.add("class-relationships", classRelationshipsSchema_nonPlus);
 
         frameworkConfig = Frameworks.newConfigBuilder().defaultSchema(classRelationshipsSchema)
                 // The default behavior of the framework config is to uppercase the SQL.
@@ -88,7 +86,7 @@ public class ClassRelationshipsRunner {
         queryClassesWithMostFields();
     }
 
-    private void buildDataSet() {
+    private Schema buildDataSetAndSchema() {
         ClassGraph classGraph = new ClassGraph().enableSystemJarsAndModules().enableFieldInfo();
 
         ClassInfoList classInfos;
@@ -105,6 +103,17 @@ public class ClassRelationshipsRunner {
             }
             classes.add(classInfo);
         }
+
+        Map<String, Table> tablesByName = Map.of(
+                "classes", listAsTable(classes, ClassInfo.class),
+                "fields", listAsTable(fields, FieldInfo.class),
+                "methods", listAsTable(methods, MethodInfo.class));
+        return new AbstractSchema() {
+            @Override
+            protected Map<String, Table> getTableMap() {
+                return tablesByName;
+            }
+        };
     }
 
     /**
