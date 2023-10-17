@@ -3,7 +3,7 @@ package dgroomes;
 import io.github.classgraph.ClassGraph;
 import io.github.classgraph.ClassInfoList;
 import org.apache.calcite.avatica.util.Casing;
-import org.apache.calcite.interpreter.Interpreter;
+import org.apache.calcite.interpreter.CustomInterpreter;
 import org.apache.calcite.plan.RelOptUtil;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.schema.Schema;
@@ -139,7 +139,7 @@ public class ClassRelationshipsRunner {
 
         DriverlessDataContext dataContext = new DriverlessDataContext(classRelationshipsSchema, node);
         var now = Instant.now();
-        try (Interpreter interpreter = new Interpreter(dataContext, node)) {
+        try (var interpreter = new CustomInterpreter(dataContext, node)) {
             interpreter.forEach(rowHandler);
 
             var end = Instant.now();

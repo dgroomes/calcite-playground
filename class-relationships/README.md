@@ -56,11 +56,20 @@ General clean-ups, TODOs and things I wish to implement for this project:
   * DONE Figure out where the 100 rows value is coming from and try to update it. Update: I think maybe I should
     switch gears and try to learn about Calcite inner workings from a blessed entrypoint like a custom adapter, like the
     CSV one. Because what I'm doing is jumping into the middle. Answer: https://github.com/apache/calcite/blob/54e3faf0618c25a63b1c40c0ec3855ce0b842127/core/src/main/java/org/apache/calcite/prepare/RelOptTableImpl.java#L243
-* Why does the Calcite "interpreter" not use the "fast path" for joins? By contrast, a demo "CSV using Calcite" demo
+* HOLD (I need to switch gears and visualize the query plan. I'm not getting it) Why does the Calcite "interpreter" not use the "fast path" for joins? By contrast, a demo "CSV using Calcite" demo
   program (like my own in `csv/`) will not use the interpreter and instead use `org.apache.calcite.linq4j.EnumerableDefaults.mergeJoin`
   and I think the Janino generated code (not 100% sure). The reason I'm using the interpreter is that I found that
   it's the only way to avoid JDBC and therefore to use the relational algebra API directly. But maybe Calcite just
   doesn't offer a path for that.
+  * I think it might just be a matter of passing the relational algebra expression (nodes-to-noes) through an optimizer?
+    Calcite has a planner called "Volcano". This is promising, is it as simple as just passing in the unoptimized expression
+    (a "nested for loop join" (slow) vs. a "hashset join" (fast))?
+  * Interesting, in a "normal" usage of Calcite where you connect via a JDBC connection instead of directly using the
+    interpreter class, I see debug log output that indicates two different planners are used: "Hep" and "Volcano".
+    Specifically, set the log level to DEBUG for `org.apache.calcite.plan.AbstractRelOptPlanner.rule_execution_summary`.
+    What is "Hep"? Answer: "he" is for heuristic. How can I make my execution use the Volcano planner?
+  * I'm taking the heavy-handed approach of copying a few of the Calcite classes (Interpreter, JaninoRexCompiler, and
+    CustomNodes) into this project and I'll modify them to achieve the effect I'm looking for.
 * [ ] Assuming that the join is not optimized (or even if it is?), write a custom optimizer rule to optimize the join.
   I want to know the options for implementing joins where there isn't a join key but instead there is a direct pointer
   (object-to-object reference). Or maybe I'll realize that my question doesn't even make sense.
@@ -77,3 +86,6 @@ General clean-ups, TODOs and things I wish to implement for this project:
     * We want to go from the current execution speed (slow): `Query executed in PT33.866871S.` to a few hundred ms. This
       is small data after all.
     * DONE (this had no effect on speed, unfortunately. why is it so slow?) row count
+* [ ] Visualize the query plan. I keep getting stumped and I have to change gears again. Need to learn the native tools
+  here. I think I should visualize the query plan using org.apache.calcite.plan.visualizer.RuleMatchVisualizer. It
+  produces HTML. It's hard to read a query plan in the toString form so I'm hoping this form will illuminate things.
