@@ -149,10 +149,14 @@ public class ClassRelationshipsRunner {
     }
 
     private void queryClassesWithMostFields() {
+        // Note: we are trying to coerce better performance. The default behavior is a nested loop join (slow). If we
+        // explicitly pre-sort the data by using the sub-queries, then the engine should know to do a merge join.
+        // Spoiler alert: it doesn't. I'm hoping this is just a prototypical example of "Hey here's a simple query,
+        // create a naive query plan, then optimize it on the simple case (merge join please)".
         String sql = """
                 select c.name, count(*)
-                from classes c
-                join fields f on c.name = f.owningClassName
+                from (select * from classes order by name) c
+                join (select * from fields order by owningClassName) f on c.name = f.owningClassName
                 group by c.name
                 order by count(*) desc
                 limit 10
