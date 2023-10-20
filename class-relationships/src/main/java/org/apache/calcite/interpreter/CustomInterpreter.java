@@ -69,15 +69,21 @@ public class CustomInterpreter extends AbstractEnumerable<@Nullable Object[]>
     }
 
     private static RelNode optimize(RelNode rootRel) {
-        // I tried wiring in VolcanoPlanner here but this doesn't work. I get the following exception:
+        // The following commented out code applies the Volcano planner to the relational expression tree. It does "do
+        // the main work" but the resulting expression can't be executed by the interpreter. I get the following error:
         //
-        //     org.apache.calcite.plan.RelOptPlanner$CannotPlanException: There are not enough rules to produce a node
-        //     with desired properties: convention=NONE, sort=[1 DESC]. All the inputs have relevant nodes, however the
-        //     cost is still infinite.
+        //     AssertionError: interpreter: no implementation for class org.apache.calcite.adapter.enumerable.EnumerableLimit
         //
-        // RelOptPlanner planner = rootRel.getCluster().getPlanner();
-        // planner.setRoot(rootRel);
-        // rootRel = planner.findBestExp();
+        // I'm going to eventually look into this, but I sense that I've gone too far too fast by using the Volcano
+        // planner, and instead I'll look back at the heuristic planner.
+        //
+        // RelOptCluster cluster = rootRel.getCluster();
+        // RelOptPlanner planner = cluster.getPlanner();
+        // RelTraitSet desiredTraits = cluster.traitSet().replace(EnumerableConvention.INSTANCE);
+        // RelNode newRoot = planner.changeTraits(rootRel, desiredTraits);
+        // planner.setRoot(newRoot);
+        // return planner.findBestExp();
+
         final HepProgram hepProgram = new HepProgramBuilder()
                 .addRuleInstance(CoreRules.CALC_SPLIT)
                 .addRuleInstance(CoreRules.FILTER_SCAN)
