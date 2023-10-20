@@ -77,12 +77,18 @@ public class CustomInterpreter extends AbstractEnumerable<@Nullable Object[]>
         // I'm going to eventually look into this, but I sense that I've gone too far too fast by using the Volcano
         // planner, and instead I'll look back at the heuristic planner.
         //
+        // The code also writes the optimization transformations to web files (HTML/JS) for visualization.
+        // var visualizer = new RuleMatchVisualizer("calcite-rule-match", "relational-algebra");
         // RelOptCluster cluster = rootRel.getCluster();
         // RelOptPlanner planner = cluster.getPlanner();
+        // visualizer.attachTo(planner);
         // RelTraitSet desiredTraits = cluster.traitSet().replace(EnumerableConvention.INSTANCE);
         // RelNode newRoot = planner.changeTraits(rootRel, desiredTraits);
         // planner.setRoot(newRoot);
-        // return planner.findBestExp();
+        // planner.setRoot(newRoot);
+        // RelNode bestExp = planner.findBestExp();
+        // visualizer.writeToFile();
+        // return bestExp;
 
         final HepProgram hepProgram = new HepProgramBuilder()
                 .addRuleInstance(CoreRules.CALC_SPLIT)

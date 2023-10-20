@@ -88,4 +88,10 @@ General clean-ups, TODOs and things I wish to implement for this project:
     * DONE (this had no effect on speed, unfortunately. why is it so slow?) row count
 * [ ] Visualize the query plan. I keep getting stumped and I have to change gears again. Need to learn the native tools
   here. I think I should visualize the query plan using org.apache.calcite.plan.visualizer.RuleMatchVisualizer. It
-  produces HTML. It's hard to read a query plan in the toString form so I'm hoping this form will illuminate things.
+  produces HTML. It's hard to read a query plan in the toString form, so I'm hoping this form will illuminate things.
+    * Reference <https://github.com/apache/calcite/blob/5151168e9a9035595939c2ae0f21a06984229209/core/src/test/java/org/apache/calcite/test/RuleMatchVisualizerTest.java#L60>
+    * Update: I got this working for the Volcano planner at least. I think when I used the heuristic planner, it just
+      wasn't finding optimizations so there was nothing to report on. And then even with the Volcano plan, I think I
+      screwed my web server and I think I was serving cached content (bad) and was getting blank content (but with
+      UI/viz controls) so I need to be careful with that. Anyway, the viz is not so important if I can instead just
+      reduce the problem space to very small.
