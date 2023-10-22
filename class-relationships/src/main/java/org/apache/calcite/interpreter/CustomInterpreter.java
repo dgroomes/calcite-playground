@@ -97,6 +97,7 @@ public class CustomInterpreter extends AbstractEnumerable<@Nullable Object[]>
                 .addRuleInstance(CoreRules.PROJECT_TABLE_SCAN)
                 .addRuleInstance(CoreRules.PROJECT_INTERPRETER_TABLE_SCAN)
                 .addRuleInstance(CoreRules.AGGREGATE_REDUCE_FUNCTIONS)
+                .addRuleInstance(CoreRules.JOIN_DERIVE_IS_NOT_NULL_FILTER_RULE)
                 .build();
         final HepPlanner planner = new HepPlanner(hepProgram);
         planner.setRoot(rootRel);

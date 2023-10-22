@@ -56,7 +56,7 @@ General clean-ups, TODOs and things I wish to implement for this project:
   * DONE Figure out where the 100 rows value is coming from and try to update it. Update: I think maybe I should
     switch gears and try to learn about Calcite inner workings from a blessed entrypoint like a custom adapter, like the
     CSV one. Because what I'm doing is jumping into the middle. Answer: https://github.com/apache/calcite/blob/54e3faf0618c25a63b1c40c0ec3855ce0b842127/core/src/main/java/org/apache/calcite/prepare/RelOptTableImpl.java#L243
-* HOLD Why does the Calcite "interpreter" not use the "fast path" for joins? By contrast, a demo "CSV using Calcite" demo
+* HOLD (I think it's as simple as "don't use the interpreter" but it's murky to me still) Why does the Calcite "interpreter" not use the "fast path" for joins? By contrast, a demo "CSV using Calcite" demo
   program (like my own in `csv/`) will not use the interpreter and instead use `org.apache.calcite.linq4j.EnumerableDefaults.mergeJoin`
   and I think the Janino generated code (not 100% sure). The reason I'm using the interpreter is that I found that
   it's the only way to avoid JDBC and therefore to use the relational algebra API directly. But maybe Calcite just
@@ -70,8 +70,9 @@ General clean-ups, TODOs and things I wish to implement for this project:
     What is "Hep"? Answer: "he" is for heuristic. How can I make my execution use the Volcano planner?
   * I'm taking the heavy-handed approach of copying a few of the Calcite classes (Interpreter, JaninoRexCompiler, and
     CustomNodes) into this project and I'll modify them to achieve the effect I'm looking for.
-  * IN PROGRESS If we sort the rows before joining, then the query execution should be able to do a merge join. If it still doesn't
-    do a merge join, there should be heuristic rule that identifies this optimization (I'm looking in the area of org.apache.calcite.rel.rules.LoptOptimizeJoinRule) 
+  * SKIP (I think the interpreter will only ever execute "logical" relational expression trees and these do not define
+    the physical join like merge/hash/inner, but instead just a logical one) If we sort the rows before joining, then the query execution should be able to do a merge join. If it still doesn't
+    do a merge join, there should be heuristic rule that identifies this optimization (I'm looking in the area of org.apache.calcite.rel.rules.LoptOptimizeJoinRule)
 * [ ] Assuming that the join is not optimized (or even if it is?), write a custom optimizer rule to optimize the join.
   I want to know the options for implementing joins where there isn't a join key but instead there is a direct pointer
   (object-to-object reference). Or maybe I'll realize that my question doesn't even make sense.
@@ -94,6 +95,6 @@ General clean-ups, TODOs and things I wish to implement for this project:
     * Reference <https://github.com/apache/calcite/blob/5151168e9a9035595939c2ae0f21a06984229209/core/src/test/java/org/apache/calcite/test/RuleMatchVisualizerTest.java#L60>
     * Update: I got this working for the Volcano planner at least. I think when I used the heuristic planner, it just
       wasn't finding optimizations so there was nothing to report on. And then even with the Volcano plan, I think I
-      screwed my web server and I think I was serving cached content (bad) and was getting blank content (but with
+      screwed up my web server and I think I was serving cached content (bad) and was getting blank content (but with
       UI/viz controls) so I need to be careful with that. Anyway, the viz is not so important if I can instead just
       reduce the problem space to very small.
