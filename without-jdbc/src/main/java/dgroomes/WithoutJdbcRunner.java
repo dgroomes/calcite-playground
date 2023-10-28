@@ -20,9 +20,9 @@ import java.util.Locale;
 /**
  * Please see the README for more context.
  */
-public class RelationalAlgebraRunner {
+public class WithoutJdbcRunner {
 
-    private static final Logger log = LoggerFactory.getLogger(RelationalAlgebraRunner.class);
+    private static final Logger log = LoggerFactory.getLogger(WithoutJdbcRunner.class);
 
     private FrameworkConfig frameworkConfig;
     private SchemaPlus geographiesSchema;
@@ -76,7 +76,7 @@ public class RelationalAlgebraRunner {
 
     public static void main(String[] args) {
         log.info("Let's learn the Apache Calcite relational algebra API!");
-        new RelationalAlgebraRunner().run();
+        new WithoutJdbcRunner().run();
     }
 
     public void run() {

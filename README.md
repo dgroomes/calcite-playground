@@ -39,11 +39,11 @@ An example program that uses Linq4j (a subproject of Apache Calcite) to join in-
 See the README in [linq4j/](linq4j/).
 
 
-### `relational-algebra/`
+### `without-jdbc/`
 
-An example program that uses the Apache Calcite relational algebra API to query over a data set.
+An example program that directly engages the core Apache Calcite APIs. JDBC is not in the mix.
 
-See the README in [relational-algebra/](relational-algebra/).
+See the README in [without-jdbc/](without-jdbc/).
 
 
 ## Notes

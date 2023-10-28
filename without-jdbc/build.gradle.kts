@@ -14,5 +14,5 @@ dependencies {
 }
 
 application {
-    mainClass.set("dgroomes.RelationalAlgebraRunner")
+    mainClass.set("dgroomes.WithoutJdbcRunner")
 }
