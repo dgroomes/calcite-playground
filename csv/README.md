@@ -50,23 +50,28 @@ Follow these instructions to build and run the example program.
       ```
     * It should print something like the following.
     * ```text
-      00:36:39 [main] INFO dgroomes.Runner - Let's learn about Apache Calcite! Let's treat local CSV files as tables.
-      00:36:39 [main] INFO dgroomes.Runner -
-      00:36:39 [main] INFO dgroomes.Runner - Select all ZIP codes and their populations...
-      00:36:40 [main] INFO dgroomes.Runner - ZIP code: 80301, population: 18,174
-      00:36:40 [main] INFO dgroomes.Runner - ZIP code: 80302, population: 29,384
-      00:36:40 [main] INFO dgroomes.Runner - ZIP code: 80303, population: 39,860
-      00:36:40 [main] INFO dgroomes.Runner - ZIP code: 80304, population: 21,550
-      00:36:40 [main] INFO dgroomes.Runner - ZIP code: 31401, population: 37,544
-      00:36:40 [main] INFO dgroomes.Runner - ZIP code: 31405, population: 28,739
-      00:36:40 [main] INFO dgroomes.Runner - ZIP code: 31406, population: 34,024
-      00:36:40 [main] INFO dgroomes.Runner - ZIP code: 31409, population: 3,509
-      00:36:40 [main] INFO dgroomes.Runner - ZIP code: 31410, population: 15,808
-      00:36:40 [main] INFO dgroomes.Runner - ZIP code: 31411, population: 4,707
-      00:36:40 [main] INFO dgroomes.Runner -
-      00:36:40 [main] INFO dgroomes.Runner - Sum up the population of each city...
-      00:36:40 [main] INFO dgroomes.Runner - Population of Savannah (GA): 124,331
-      00:36:40 [main] INFO dgroomes.Runner - Population of Boulder (CO): 108,968
+      13:11:57 [main] INFO dgroomes.CsvRunner - Let's learn about Apache Calcite! Let's treat local CSV files as tables.
+      13:11:57 [main] INFO dgroomes.CsvRunner -
+      13:11:57 [main] INFO dgroomes.CsvRunner - Select all ZIP codes and their populations...
+      13:11:58 [main] INFO dgroomes.CsvRunner - ZIP code: 80301, population: 18,174
+      13:11:58 [main] INFO dgroomes.CsvRunner - ZIP code: 80302, population: 29,384
+      13:11:58 [main] INFO dgroomes.CsvRunner - ZIP code: 80303, population: 39,860
+      13:11:58 [main] INFO dgroomes.CsvRunner - ZIP code: 80304, population: 21,550
+      13:11:58 [main] INFO dgroomes.CsvRunner - ZIP code: 31401, population: 37,544
+      13:11:58 [main] INFO dgroomes.CsvRunner - ZIP code: 31405, population: 28,739
+      13:11:58 [main] INFO dgroomes.CsvRunner - ZIP code: 31406, population: 34,024
+      13:11:58 [main] INFO dgroomes.CsvRunner - ZIP code: 31409, population: 3,509
+      13:11:58 [main] INFO dgroomes.CsvRunner - ZIP code: 31410, population: 15,808
+      13:11:58 [main] INFO dgroomes.CsvRunner - ZIP code: 31411, population: 4,707
+      13:11:58 [main] INFO dgroomes.CsvRunner -
+      13:11:58 [main] INFO dgroomes.CsvRunner - Sum up the population of each city...
+      13:11:58 [main] INFO dgroomes.CsvRunner - Population of Savannah (GA): 124,331
+      13:11:58 [main] INFO dgroomes.CsvRunner - Population of Boulder (CO): 108,968
+      13:11:58 [main] INFO dgroomes.CsvRunner -
+      13:11:58 [main] INFO dgroomes.CsvRunner - Find high population ZIPs...
+      13:11:58 [main] INFO dgroomes.CsvRunner - ZIP code: 80303, population: 39,860
+      13:11:58 [main] INFO dgroomes.CsvRunner - ZIP code: 31401, population: 37,544
+      13:11:58 [main] INFO dgroomes.CsvRunner - ZIP code: 31406, population: 34,024
       ```
 
 
@@ -87,3 +92,8 @@ General clean-ups, TODOs and things I wish to implement for this project:
 * [x] DONE Replace employee/sales domain with ZIPs/cities/states
 * [x] DONE (I learned some stuff) Explore the Calcite software machinery. How does the SQL query turn into a plan and get executed by
   Calcite?
+* [x] DONE Execute a query using a relational expression (e.g. no SQL necessary).
+  * It looks like the JDBC/prepare code takes a SQL string (as we know) but alternatively something called a "queryable"
+    (via `query.queryable`) and a "relational expression" (via `query.rel`). When I make a query from client code, can I
+    set a relational expression on the query and just not provide SQL? That's what I really want to do. See <https://github.com/apache/calcite/blob/c83ac69111fd9e75af5e3615af29a72284667a4a/core/src/main/java/org/apache/calcite/prepare/CalcitePrepareImpl.java#L686>
+  * `org.apache.calcite.tools.RelRunners.run` shows that yes, should be totally possible.

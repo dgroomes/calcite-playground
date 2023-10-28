@@ -15,5 +15,5 @@ dependencies {
 }
 
 application {
-    mainClass.set("dgroomes.Runner")
+    mainClass.set("dgroomes.CsvRunner")
 }

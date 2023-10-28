@@ -31,6 +31,11 @@ Follow these instructions to build and run the example program.
 General clean-ups, TODOs and things I wish to implement for this project:
 
 * [x] DONE Present city name instead of just OID.
+* [ ] Turn this into a `without-jdbc` subproject. The dimension of `SQL vs relational expression` is interesting and the
+  dimension of `JDBC or no-JDBC` is also interesting. While I considered these dimensions related before, e.g. using SQL
+  means you probably use JDBC and using relational expressions means you probably don't use JDBC, I'm now seeing that
+  is not a real constraint. My `csv/` subproject uses JDBC and SQL. I'll enrich it to also show relational expressions.
+  This project (`relational-algebra`) uses relational expressions and no JDBC. I'll enrich it to also show SQL.
 
 
 ## Reference
