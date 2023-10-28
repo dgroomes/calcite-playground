@@ -52,6 +52,11 @@ General clean-ups, TODOs and things I wish to implement for this project:
   * SKIP (I think the interpreter will only ever execute "logical" relational expression trees and these do not define
     the physical join like merge/hash/inner, but instead just a logical one) If we sort the rows before joining, then the query execution should be able to do a merge join. If it still doesn't
     do a merge join, there should be heuristic rule that identifies this optimization (I'm looking in the area of org.apache.calcite.rel.rules.LoptOptimizeJoinRule)
+  * Go the JDBC route. I thought that this would not be possible and also just a bad idea because I'm exploring core
+    Calcite concepts, and JDBC/SQL is not core, but the JDBC connection actually does allow executing relational
+    expressions (I showcased this in my `csv/` subproject) and the JDBC route will apply all the optimizations and also
+    just do lots of the boilerplate that isn't implemented in any "core-only Calcite" route (it just doesn't exist; the
+    Interpreter is the closest thing but is missing a bulk of boilerplate/handling/wiring). 
 * [ ] Assuming that the join is not optimized (or even if it is?), write a custom optimizer rule to optimize the join.
   I want to know the options for implementing joins where there isn't a join key but instead there is a direct pointer
   (object-to-object reference). Or maybe I'll realize that my question doesn't even make sense.
