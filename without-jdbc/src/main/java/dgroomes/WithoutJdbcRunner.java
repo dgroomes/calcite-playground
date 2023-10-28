@@ -75,7 +75,7 @@ public class WithoutJdbcRunner {
     }
 
     public static void main(String[] args) {
-        log.info("Let's learn the Apache Calcite relational algebra API!");
+        log.info("Let's engage core Apache Calcite APIs like the relational algebra API!");
         new WithoutJdbcRunner().run();
     }
 
@@ -98,16 +98,13 @@ public class WithoutJdbcRunner {
                 .defaultSchema(geographiesSchema)
                 .build();
 
-        // Only use this as needed to glean information about the relational algebra expression
-        //examineSqlAsRelationalExpression();
-
-        cityPop();
+        cityPop_relationalExpression();
+        cityPop_sql();
     }
 
-    /**
-     * Sum up ZIP code population data to their city.
-     */
-    private void cityPop() {
+    private void cityPop_relationalExpression() {
+        log.info("Calculate total city populations by summing up ZIP codes (relational expression)...");
+
         // Let's build a relational algebra expression directly. While the official Calcite codebase generally tests
         // with SQL, there are some examples that use the relational algebra API, like this: https://github.com/apache/calcite/blob/3c5345c988e43622e7dd1e8197972c7664514da1/core/src/test/java/org/apache/calcite/examples/RelBuilderExample.java#L31
         RelBuilder builder = RelBuilder.create(frameworkConfig);
@@ -126,7 +123,7 @@ public class WithoutJdbcRunner {
                         builder.field("city_population"))
                 .build();
 
-        DriverlessDataContext dataContext = new DriverlessDataContext(geographiesSchema, node);
+        var dataContext = new DriverlessDataContext(geographiesSchema, node);
 
         try (Interpreter interpreter = new Interpreter(dataContext, node)) {
             interpreter.forEach(row -> {
@@ -140,17 +137,13 @@ public class WithoutJdbcRunner {
     }
 
     /**
-     * This is a bit off-topic but I've found it difficult to write working relational expressions. By contrast, I can
-     * figure out how to write working SQL queries. Conveniently, you can convert a SQL query to a relational text
-     * expression and then I have a better chance at writing the expression in Java.
+     * It's difficult to hand-write relational algebra expressions. By contrast, it's really easy to write SQL because
+     * it's a language many know and love. This method converts a SQL query to a relational algebra expression object
+     * using core Calcite APIs. This is an absolute boon in jumpstarting the process of writing relational algebra
+     * expressions.
      */
-    private void examineSqlAsRelationalExpression() {
-        // SQL Query
-        String sql = """
-                select c.name, sum(z.population)
-                from cities c inner join zips z on c.oid = z.cityOid
-                group by c.name
-                """;
+    private RelNode convertSqlToRelationalExpression(String sql) {
+        log.debug("Converting the following SQL query to a relational expression:\n{}", sql);
 
         // Creating planner with default settings (what is a planner?)
         Planner planner = Frameworks.getPlanner(frameworkConfig);
@@ -160,9 +153,36 @@ public class WithoutJdbcRunner {
             SqlNode parsedSql = planner.parse(sql);
             SqlNode validatedSql = planner.validate(parsedSql);
             node = planner.rel(validatedSql).rel;
-            log.info("\n{}", RelOptUtil.toString(node));
+
+            // Turn on debug logging to see the relational algebra expression in text form.
+            log.debug("Relational algebra expression (converted from SQL):\n{}", RelOptUtil.toString(node));
         } catch (SqlParseException | ValidationException | RelConversionException e) {
             throw new RuntimeException(e);
+        }
+
+        return node;
+    }
+
+    private void cityPop_sql() {
+        log.info("Calculate total city populations by summing up ZIP codes (SQL)...");
+
+        var sql = """
+                select c.name, c.oid, sum(z.population)
+                from cities c inner join zips z on c.oid = z.cityOid
+                group by c.name, c.oid""";
+
+        RelNode node = convertSqlToRelationalExpression(sql);
+
+        var dataContext = new DriverlessDataContext(geographiesSchema, node);
+
+        try (Interpreter interpreter = new Interpreter(dataContext, node)) {
+            interpreter.forEach(row -> {
+                var cityName = row[0];
+                var cityOid = row[1];
+                //noinspection DataFlowIssue
+                var population = formatInteger((int) row[2]);
+                log.info("City '{}' ({}) has a population of {}", cityName, cityOid, population);
+            });
         }
     }
 
