@@ -35,12 +35,17 @@ Follow these instructions to build and run the example program.
 
 General clean-ups, TODOs and things I wish to implement for this project:
 
+* [ ] Write a do-nothing optimizer rule. I need to dip my toes first. Can I write an optimizer rule that just is "considered"
+  by the planner but doesn't actually get used, and instead just logs maybe? Is there 
 * [ ] Write a custom optimizer rule to perform a "memory/address reference" join. Because we have the advantage
   that our dataset is actually just Java objects that have direct memory references to each other (e.g. an instance of `FieldInfo`
   has a reference to its owning `ClassInfo` object by way of the field `FieldInfo.owningClass`), we can perform a
   direct join instead of a nested loop, hash join or "sort and merge" join. This won't necessarily be any faster, but I
   hope it is in some cases and I want to do it. I think this might be hard or impossible to implement because the
-  enumerable/Linq4j stuff might just not be extensible for it, but let's see.
+  enumerable/Linq4j stuff might just not be extensible for it, but let's see. Update: I don't just need a custom rule,
+  I need a whole expression type that is the same spirit as `org.apache.calcite.adapter.enumerable.EnumerableMergeJoin`.
+  Again, is enumerable/Linq4j even extensible in this way? I could fork the whole thing, but that's never anything I'd
+  use in a non-demo application.
 * [ ] No aggregations. Get rid of the `group by` in the example. My motivating use-case is just "find by property" and
   not to compute anything (e.g. a simple `count` is a computation). This is a simple complexity to save on. 
 * [x] DONE Defect. The join between `CLASSES` and `FIELDS` is acting like an inner join instead of a right join like I want.
