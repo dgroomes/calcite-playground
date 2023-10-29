@@ -5,14 +5,13 @@ import io.github.classgraph.ClassInfoList;
 import org.apache.calcite.jdbc.CalciteConnection;
 import org.apache.calcite.plan.RelOptUtil;
 import org.apache.calcite.rel.RelNode;
+import org.apache.calcite.rel.core.JoinRelType;
 import org.apache.calcite.schema.Schema;
 import org.apache.calcite.schema.Table;
 import org.apache.calcite.schema.impl.AbstractSchema;
 import org.apache.calcite.sql.SqlNode;
-import org.apache.calcite.tools.FrameworkConfig;
-import org.apache.calcite.tools.Frameworks;
-import org.apache.calcite.tools.Planner;
-import org.apache.calcite.tools.RelRunner;
+import org.apache.calcite.sql.parser.SqlParseException;
+import org.apache.calcite.tools.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +40,7 @@ public class ClassRelationshipsRunner {
     private static final Logger log = LoggerFactory.getLogger(ClassRelationshipsRunner.class);
     private RelRunner relRunner;
     private Planner planner;
+    private FrameworkConfig frameworkConfig;
 
     public ClassRelationshipsRunner(int takeFirstNClasses) {
         this.takeFirstNClasses = takeFirstNClasses;
@@ -76,13 +76,14 @@ public class ClassRelationshipsRunner {
             calciteConnection.getRootSchema().add("CLASS_RELATIONSHIPS", schema);
             calciteConnection.setSchema("CLASS_RELATIONSHIPS");
 
-            FrameworkConfig frameworkConfig = Frameworks.newConfigBuilder()
+            frameworkConfig = Frameworks.newConfigBuilder()
                     .defaultSchema(calciteConnection.getRootSchema())
                     .build();
             planner = Frameworks.getPlanner(frameworkConfig);
 
             relRunner = connection.unwrap(RelRunner.class);
 
+            //            examineSqlAsRelationalExpression();
             queryClassesWithMostFields();
         }
     }
@@ -120,22 +121,14 @@ public class ClassRelationshipsRunner {
     }
 
     /**
-     * Execute a SQL query over the "class relationships" data set.
+     * Execute a relational expression over the "class relationships" data set.
      *
-     * @param sql        The SQL string to execute.
+     * @param relNode
      * @param rowHandler A function to handle each row of the result.
      */
-    private void query(String sql, RowHandler rowHandler) throws Exception {
-        RelNode node;
-        {
-            SqlNode parsedSql = planner.parse(sql);
-            SqlNode validatedSql = planner.validate(parsedSql);
-            node = planner.rel(validatedSql).rel;
-            log.debug("\n{}", RelOptUtil.toString(node));
-        }
-
+    private void query(RelNode relNode, RowHandler rowHandler) throws Exception {
         var now = Instant.now();
-        PreparedStatement preparedStatement = relRunner.prepareStatement(node);
+        PreparedStatement preparedStatement = relRunner.prepareStatement(relNode);
         preparedStatement.execute();
         ResultSet resultSet = preparedStatement.getResultSet();
         while (resultSet.next()) {
@@ -148,6 +141,35 @@ public class ClassRelationshipsRunner {
     }
 
     private void queryClassesWithMostFields() throws Exception {
+        RelBuilder builder = RelBuilder.create(frameworkConfig);
+        RelNode relNode = builder
+                .scan("CLASS_RELATIONSHIPS", "CLASSES")
+                .scan("CLASS_RELATIONSHIPS", "FIELDS")
+                .join(JoinRelType.RIGHT,
+                        builder.equals(
+                                builder.field(2, 0, "NAME"),
+                                builder.field(2, 1, "OWNINGCLASSNAME")))
+                .aggregate(builder.groupKey("OWNINGCLASSNAME"), builder.countStar("NUMBER_OF_FIELDS"))
+                .sortLimit(0, 10, builder.desc(builder.field("NUMBER_OF_FIELDS")))
+                .project(
+                        builder.field("OWNINGCLASSNAME"),
+                        builder.field("NUMBER_OF_FIELDS"))
+                .build();
+
+        query(relNode, resultSet -> {
+            var name = resultSet.getString(1);
+            var count = resultSet.getLong(2);
+            log.info("Class name '{}' has {} fields", name, Util.formatInteger(count));
+        });
+    }
+
+    /**
+     * It's difficult to hand-write relational algebra expressions. By contrast, it's really easy to write SQL because
+     * it's a language many know and love. This method converts a SQL query to a relational algebra expression object
+     * using core Calcite APIs. This is an absolute boon in jumpstarting the process of writing relational algebra
+     * expressions.
+     */
+    private void examineSqlAsRelationalExpression() {
         String sql = """
                 select c.name, count(*)
                 from class_relationships.classes c
@@ -157,11 +179,17 @@ public class ClassRelationshipsRunner {
                 limit 10
                 """;
 
-        query(sql, resultSet -> {
-            var name = resultSet.getString(1);
-            var count = resultSet.getLong(2);
-            log.info("Class name '{}' has {} fields", name, Util.formatInteger(count));
-        });
+        log.info("Converting the following SQL query to a relational expression:\n{}", sql);
+
+        RelNode node;
+        try {
+            SqlNode parsedSql = planner.parse(sql);
+            SqlNode validatedSql = planner.validate(parsedSql);
+            node = planner.rel(validatedSql).rel;
+            log.info("Relational algebra expression (converted from SQL):\n{}", RelOptUtil.toString(node));
+        } catch (SqlParseException | ValidationException | RelConversionException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
 

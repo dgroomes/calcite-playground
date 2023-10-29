@@ -57,7 +57,7 @@ General clean-ups, TODOs and things I wish to implement for this project:
     expressions (I showcased this in my `csv/` subproject) and the JDBC route will apply all the optimizations and also
     just do lots of the boilerplate that isn't implemented in any "core-only Calcite" route (it just doesn't exist; the
     Interpreter is the closest thing but is missing a bulk of boilerplate/handling/wiring). 
-  * Author straight relational expressions instead of SQL. SQL queries get reduced down to a relational expression anyway
+  * DONE Author straight relational expressions instead of SQL. SQL queries get reduced down to a relational expression anyway
     and that's what I need to know.
 * [ ] Assuming that the join is not optimized (or even if it is?), write a custom optimizer rule to optimize the join.
   I want to know the options for implementing joins where there isn't a join key but instead there is a direct pointer
