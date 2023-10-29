@@ -120,7 +120,7 @@ public class CsvRunner {
         Planner planner;
         {
             var schema = calciteConnection.getRootSchema();
-            var frameworkConfig = Frameworks.newConfigBuilder().defaultSchema(schema)
+            var frameworkConfig = Frameworks.newConfigBuilder()
                     .defaultSchema(schema)
                     .build();
             planner = Frameworks.getPlanner(frameworkConfig);
@@ -152,7 +152,7 @@ public class CsvRunner {
         RelNode node;
         {
             var schema = calciteConnection.getRootSchema();
-            var frameworkConfig = Frameworks.newConfigBuilder().defaultSchema(schema)
+            var frameworkConfig = Frameworks.newConfigBuilder()
                     .defaultSchema(schema)
                     .build();
             RelBuilder builder = RelBuilder.create(frameworkConfig);
