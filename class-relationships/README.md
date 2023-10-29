@@ -38,7 +38,7 @@ General clean-ups, TODOs and things I wish to implement for this project:
 * [ ] Assuming that the join is not optimized (or even if it is?), write a custom optimizer rule to optimize the join.
   I want to know the options for implementing joins where there isn't a join key but instead there is a direct pointer
   (object-to-object reference). Or maybe I'll realize that my question doesn't even make sense.
-* [ ] Defect. The join between `CLASSES` and `FIELDS` is acting like an inner join instead of a right join like I want.
+* [x] DONE Defect. The join between `CLASSES` and `FIELDS` is acting like an inner join instead of a right join like I want.
   When a class has no fields (and thus has no corresponding row in the `FIELDS` table), I still want the class to be in
   the result set.
 

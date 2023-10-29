@@ -131,13 +131,15 @@ public class ClassRelationshipsRunner {
         PreparedStatement preparedStatement = relRunner.prepareStatement(relNode);
         preparedStatement.execute();
         ResultSet resultSet = preparedStatement.getResultSet();
+        int rowCount = 0;
         while (resultSet.next()) {
+            rowCount++;
             rowHandler.handle(resultSet);
         }
         resultSet.close();
         var end = Instant.now();
         var duration = Duration.between(now, end);
-        log.info("Query executed in {}.", duration);
+        log.info("Query executed in {}. Fetched {} rows.", duration, rowCount);
     }
 
     private void queryClassesWithMostFields() throws Exception {
@@ -145,16 +147,20 @@ public class ClassRelationshipsRunner {
         RelNode relNode = builder
                 .scan("CLASS_RELATIONSHIPS", "CLASSES")
                 .scan("CLASS_RELATIONSHIPS", "FIELDS")
-                .join(JoinRelType.RIGHT,
+                .join(JoinRelType.LEFT,
                         builder.equals(
                                 builder.field(2, 0, "NAME"),
                                 builder.field(2, 1, "OWNINGCLASSNAME")))
-                .aggregate(builder.groupKey("OWNINGCLASSNAME"), builder.countStar("NUMBER_OF_FIELDS"))
+                .aggregate(builder.groupKey("NAME"), builder.countStar("NUMBER_OF_FIELDS"))
                 .sortLimit(0, 10, builder.desc(builder.field("NUMBER_OF_FIELDS")))
                 .project(
-                        builder.field("OWNINGCLASSNAME"),
+                        builder.field("NAME"),
                         builder.field("NUMBER_OF_FIELDS"))
                 .build();
+
+        log.debug("Relational algebra expression:\n{}", RelOptUtil.toString(relNode));
+
+//        relNode = examineSqlAsRelationalExpression();
 
         query(relNode, resultSet -> {
             var name = resultSet.getString(1);
@@ -169,11 +175,11 @@ public class ClassRelationshipsRunner {
      * using core Calcite APIs. This is an absolute boon in jumpstarting the process of writing relational algebra
      * expressions.
      */
-    private void examineSqlAsRelationalExpression() {
+    private RelNode examineSqlAsRelationalExpression() {
         String sql = """
                 select c.name, count(*)
                 from class_relationships.classes c
-                join class_relationships.fields f on c.name = f.owningClassName
+                left join class_relationships.fields f on c.name = f.owningClassName
                 group by c.name
                 order by count(*) desc
                 limit 10
@@ -187,6 +193,7 @@ public class ClassRelationshipsRunner {
             SqlNode validatedSql = planner.validate(parsedSql);
             node = planner.rel(validatedSql).rel;
             log.info("Relational algebra expression (converted from SQL):\n{}", RelOptUtil.toString(node));
+            return node;
         } catch (SqlParseException | ValidationException | RelConversionException e) {
             throw new RuntimeException(e);
         }
