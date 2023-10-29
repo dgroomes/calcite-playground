@@ -11,11 +11,11 @@ public class FieldInfo {
      * It's redundant to store the owning class name, because it's already stored in the owning class object. However,
      * I need this to make Calcite joins work. I haven't figured out a better way yet.
      */
-    public final String owningClassName;
+    public final String OWNINGCLASSNAME;
 
     public FieldInfo(String name, ClassInfo owningClass) {
         this.name = name;
         this.owningClass = owningClass;
-        owningClassName = owningClass.name;
+        OWNINGCLASSNAME = owningClass.NAME;
     }
 }

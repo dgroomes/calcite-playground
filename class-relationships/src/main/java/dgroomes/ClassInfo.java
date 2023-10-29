@@ -6,9 +6,9 @@ package dgroomes;
  * data as a "table" for Apache Calcite.
  */
 public class ClassInfo {
-    public final String name;
+    public final String NAME;
 
-    public ClassInfo(String name) {
-        this.name = name;
+    public ClassInfo(String NAME) {
+        this.NAME = NAME;
     }
 }

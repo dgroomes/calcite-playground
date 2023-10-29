@@ -2,27 +2,29 @@ package dgroomes;
 
 import io.github.classgraph.ClassGraph;
 import io.github.classgraph.ClassInfoList;
-import org.apache.calcite.avatica.util.Casing;
-import org.apache.calcite.interpreter.CustomInterpreter;
+import org.apache.calcite.jdbc.CalciteConnection;
 import org.apache.calcite.plan.RelOptUtil;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.schema.Schema;
-import org.apache.calcite.schema.SchemaPlus;
 import org.apache.calcite.schema.Table;
 import org.apache.calcite.schema.impl.AbstractSchema;
 import org.apache.calcite.sql.SqlNode;
-import org.apache.calcite.sql.parser.SqlParseException;
-import org.apache.calcite.sql.parser.SqlParser;
-import org.apache.calcite.tools.*;
+import org.apache.calcite.tools.FrameworkConfig;
+import org.apache.calcite.tools.Frameworks;
+import org.apache.calcite.tools.Planner;
+import org.apache.calcite.tools.RelRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 
 import static dgroomes.TableOverEnumerable.listAsTable;
 
@@ -32,21 +34,19 @@ import static dgroomes.TableOverEnumerable.listAsTable;
 public class ClassRelationshipsRunner {
 
     private final int takeFirstNClasses;
-    private FrameworkConfig frameworkConfig;
-    private SchemaPlus classRelationshipsSchema;
-
     public final List<ClassInfo> classes = new ArrayList<>();
     public final List<FieldInfo> fields = new ArrayList<>();
     public final List<MethodInfo> methods = new ArrayList<>();
 
-
     private static final Logger log = LoggerFactory.getLogger(ClassRelationshipsRunner.class);
+    private RelRunner relRunner;
+    private Planner planner;
 
     public ClassRelationshipsRunner(int takeFirstNClasses) {
         this.takeFirstNClasses = takeFirstNClasses;
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         log.info("Let's reflectively analyze Java class-to-class relationships and query the data with Apache Calcite!");
 
         int takeFirstNClasses;
@@ -67,23 +67,24 @@ public class ClassRelationshipsRunner {
         runner.run();
     }
 
-    public void run() {
-        // (Note: it's surprisingly verbose to wire up a Calcite schema)
-        SchemaPlus rootSchema = Frameworks.createRootSchema(true);
-        Schema classRelationshipsSchema_nonPlus = buildDataSetAndSchema();
-        classRelationshipsSchema = rootSchema.add("class-relationships", classRelationshipsSchema_nonPlus);
+    public void run() throws Exception {
 
-        frameworkConfig = Frameworks.newConfigBuilder().defaultSchema(classRelationshipsSchema)
-                // The default behavior of the framework config is to uppercase the SQL.
-                // This is generally a useful normalization but the reflective schema does
-                // not uppercase its table names (e.g. the 'cities' array list is represented
-                // as a 'cities' table. So there is a mismatch at the SQL validation time.
-                // To work around this, we can use the "unquoted casing unchanged" option.
-                .parserConfig(SqlParser.Config.DEFAULT.withUnquotedCasing(Casing.UNCHANGED))
-                .defaultSchema(classRelationshipsSchema)
-                .build();
+        try (var connection = DriverManager.getConnection("jdbc:calcite:")) {
 
-        queryClassesWithMostFields();
+            Schema schema = buildDataSetAndSchema();
+            var calciteConnection = connection.unwrap(CalciteConnection.class);
+            calciteConnection.getRootSchema().add("CLASS_RELATIONSHIPS", schema);
+            calciteConnection.setSchema("CLASS_RELATIONSHIPS");
+
+            FrameworkConfig frameworkConfig = Frameworks.newConfigBuilder()
+                    .defaultSchema(calciteConnection.getRootSchema())
+                    .build();
+            planner = Frameworks.getPlanner(frameworkConfig);
+
+            relRunner = connection.unwrap(RelRunner.class);
+
+            queryClassesWithMostFields();
+        }
     }
 
     private Schema buildDataSetAndSchema() {
@@ -107,9 +108,9 @@ public class ClassRelationshipsRunner {
         log.info("Built the final in-memory data set. {} class, {} fields, {} methods", Util.formatInteger(classes.size()), Util.formatInteger(fields.size()), Util.formatInteger(methods.size()));
 
         Map<String, Table> tablesByName = Map.of(
-                "classes", listAsTable(classes, ClassInfo.class),
-                "fields", listAsTable(fields, FieldInfo.class),
-                "methods", listAsTable(methods, MethodInfo.class));
+                "CLASSES", listAsTable(classes, ClassInfo.class),
+                "FIELDS", listAsTable(fields, FieldInfo.class),
+                "METHODS", listAsTable(methods, MethodInfo.class));
         return new AbstractSchema() {
             @Override
             protected Map<String, Table> getTableMap() {
@@ -124,48 +125,46 @@ public class ClassRelationshipsRunner {
      * @param sql        The SQL string to execute.
      * @param rowHandler A function to handle each row of the result.
      */
-    private void query(String sql, Consumer<Object[]> rowHandler) {
-        Planner planner = Frameworks.getPlanner(frameworkConfig);
-
+    private void query(String sql, RowHandler rowHandler) throws Exception {
         RelNode node;
-        try {
+        {
             SqlNode parsedSql = planner.parse(sql);
             SqlNode validatedSql = planner.validate(parsedSql);
             node = planner.rel(validatedSql).rel;
             log.debug("\n{}", RelOptUtil.toString(node));
-        } catch (SqlParseException | ValidationException | RelConversionException e) {
-            throw new RuntimeException(e);
         }
 
-        DriverlessDataContext dataContext = new DriverlessDataContext(classRelationshipsSchema, node);
         var now = Instant.now();
-        try (var interpreter = new CustomInterpreter(dataContext, node)) {
-            interpreter.forEach(rowHandler);
-
-            var end = Instant.now();
-            var duration = Duration.between(now, end);
-            log.info("Query executed in {}.", duration);
+        PreparedStatement preparedStatement = relRunner.prepareStatement(node);
+        preparedStatement.execute();
+        ResultSet resultSet = preparedStatement.getResultSet();
+        while (resultSet.next()) {
+            rowHandler.handle(resultSet);
         }
+        resultSet.close();
+        var end = Instant.now();
+        var duration = Duration.between(now, end);
+        log.info("Query executed in {}.", duration);
     }
 
-    private void queryClassesWithMostFields() {
-        // Note: we are trying to coerce better performance. The default behavior is a nested loop join (slow). If we
-        // explicitly pre-sort the data by using the sub-queries, then the engine should know to do a merge join.
-        // Spoiler alert: it doesn't. I'm hoping this is just a prototypical example of "Hey here's a simple query,
-        // create a naive query plan, then optimize it on the simple case (merge join please)".
+    private void queryClassesWithMostFields() throws Exception {
         String sql = """
                 select c.name, count(*)
-                from (select * from classes order by name) c
-                join (select * from fields order by owningClassName) f on c.name = f.owningClassName
+                from class_relationships.classes c
+                join class_relationships.fields f on c.name = f.owningClassName
                 group by c.name
                 order by count(*) desc
                 limit 10
                 """;
 
-        query(sql, row -> {
-            var name = row[0];
-            var count = (long) row[1];
+        query(sql, resultSet -> {
+            var name = resultSet.getString(1);
+            var count = resultSet.getLong(2);
             log.info("Class name '{}' has {} fields", name, Util.formatInteger(count));
         });
     }
+}
+
+interface RowHandler {
+    void handle(ResultSet resultSet) throws SQLException;
 }
