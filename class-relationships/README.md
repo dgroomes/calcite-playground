@@ -35,9 +35,14 @@ Follow these instructions to build and run the example program.
 
 General clean-ups, TODOs and things I wish to implement for this project:
 
-* [ ] Assuming that the join is not optimized (or even if it is?), write a custom optimizer rule to optimize the join.
-  I want to know the options for implementing joins where there isn't a join key but instead there is a direct pointer
-  (object-to-object reference). Or maybe I'll realize that my question doesn't even make sense.
+* [ ] Write a custom optimizer rule to perform a "memory/address reference" join. Because we have the advantage
+  that our dataset is actually just Java objects that have direct memory references to each other (e.g. an instance of `FieldInfo`
+  has a reference to its owning `ClassInfo` object by way of the field `FieldInfo.owningClass`), we can perform a
+  direct join instead of a nested loop, hash join or "sort and merge" join. This won't necessarily be any faster, but I
+  hope it is in some cases and I want to do it. I think this might be hard or impossible to implement because the
+  enumerable/Linq4j stuff might just not be extensible for it, but let's see.
+* [ ] No aggregations. Get rid of the `group by` in the example. My motivating use-case is just "find by property" and
+  not to compute anything (e.g. a simple `count` is a computation). This is a simple complexity to save on. 
 * [x] DONE Defect. The join between `CLASSES` and `FIELDS` is acting like an inner join instead of a right join like I want.
   When a class has no fields (and thus has no corresponding row in the `FIELDS` table), I still want the class to be in
   the result set.
