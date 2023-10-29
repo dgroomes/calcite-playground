@@ -35,30 +35,6 @@ Follow these instructions to build and run the example program.
 
 General clean-ups, TODOs and things I wish to implement for this project:
 
-* [x] DONE (I think it's as simple as "don't use the interpreter" but it's murky to me still) Why does the Calcite "interpreter" not use the "fast path" for joins? By contrast, a demo "CSV using Calcite" demo
-  program (like my own in `csv/`) will not use the interpreter and instead use `org.apache.calcite.linq4j.EnumerableDefaults.mergeJoin`
-  and I think the Janino generated code (not 100% sure). The reason I'm using the interpreter is that I found that
-  it's the only way to avoid JDBC and therefore to use the relational algebra API directly. But maybe Calcite just
-  doesn't offer a path for that.
-  * I think it might just be a matter of passing the relational algebra expression (nodes-to-noes) through an optimizer?
-    Calcite has a planner called "Volcano". This is promising, is it as simple as just passing in the unoptimized expression
-    (a "nested for loop join" (slow) vs. a "hashset join" (fast))?
-  * Interesting, in a "normal" usage of Calcite where you connect via a JDBC connection instead of directly using the
-    interpreter class, I see debug log output that indicates two different planners are used: "Hep" and "Volcano".
-    Specifically, set the log level to DEBUG for `org.apache.calcite.plan.AbstractRelOptPlanner.rule_execution_summary`.
-    What is "Hep"? Answer: "he" is for heuristic. How can I make my execution use the Volcano planner?
-  * I'm taking the heavy-handed approach of copying a few of the Calcite classes (Interpreter, JaninoRexCompiler, and
-    CustomNodes) into this project and I'll modify them to achieve the effect I'm looking for.
-  * SKIP (I think the interpreter will only ever execute "logical" relational expression trees and these do not define
-    the physical join like merge/hash/inner, but instead just a logical one) If we sort the rows before joining, then the query execution should be able to do a merge join. If it still doesn't
-    do a merge join, there should be heuristic rule that identifies this optimization (I'm looking in the area of org.apache.calcite.rel.rules.LoptOptimizeJoinRule)
-  * DONE Go the JDBC route. I thought that this would not be possible and also just a bad idea because I'm exploring core
-    Calcite concepts, and JDBC/SQL is not core, but the JDBC connection actually does allow executing relational
-    expressions (I showcased this in my `csv/` subproject) and the JDBC route will apply all the optimizations and also
-    just do lots of the boilerplate that isn't implemented in any "core-only Calcite" route (it just doesn't exist; the
-    Interpreter is the closest thing but is missing a bulk of boilerplate/handling/wiring). 
-  * DONE Author straight relational expressions instead of SQL. SQL queries get reduced down to a relational expression anyway
-    and that's what I need to know.
 * [ ] Assuming that the join is not optimized (or even if it is?), write a custom optimizer rule to optimize the join.
   I want to know the options for implementing joins where there isn't a join key but instead there is a direct pointer
   (object-to-object reference). Or maybe I'll realize that my question doesn't even make sense.
@@ -112,3 +88,27 @@ General clean-ups, TODOs and things I wish to implement for this project:
     screwed up my web server and I think I was serving cached content (bad) and was getting blank content (but with
     UI/viz controls) so I need to be careful with that. Anyway, the viz is not so important if I can instead just
     reduce the problem space to very small.
+* [x] DONE (I think it's as simple as "don't use the interpreter" but it's murky to me still) Why does the Calcite "interpreter" not use the "fast path" for joins? By contrast, a demo "CSV using Calcite" demo
+  program (like my own in `csv/`) will not use the interpreter and instead use `org.apache.calcite.linq4j.EnumerableDefaults.mergeJoin`
+  and I think the Janino generated code (not 100% sure). The reason I'm using the interpreter is that I found that
+  it's the only way to avoid JDBC and therefore to use the relational algebra API directly. But maybe Calcite just
+  doesn't offer a path for that.
+  * I think it might just be a matter of passing the relational algebra expression (nodes-to-noes) through an optimizer?
+    Calcite has a planner called "Volcano". This is promising, is it as simple as just passing in the unoptimized expression
+    (a "nested for loop join" (slow) vs. a "hashset join" (fast))?
+  * Interesting, in a "normal" usage of Calcite where you connect via a JDBC connection instead of directly using the
+    interpreter class, I see debug log output that indicates two different planners are used: "Hep" and "Volcano".
+    Specifically, set the log level to DEBUG for `org.apache.calcite.plan.AbstractRelOptPlanner.rule_execution_summary`.
+    What is "Hep"? Answer: "he" is for heuristic. How can I make my execution use the Volcano planner?
+  * I'm taking the heavy-handed approach of copying a few of the Calcite classes (Interpreter, JaninoRexCompiler, and
+    CustomNodes) into this project and I'll modify them to achieve the effect I'm looking for.
+  * SKIP (I think the interpreter will only ever execute "logical" relational expression trees and these do not define
+    the physical join like merge/hash/inner, but instead just a logical one) If we sort the rows before joining, then the query execution should be able to do a merge join. If it still doesn't
+    do a merge join, there should be heuristic rule that identifies this optimization (I'm looking in the area of org.apache.calcite.rel.rules.LoptOptimizeJoinRule)
+  * DONE Go the JDBC route. I thought that this would not be possible and also just a bad idea because I'm exploring core
+    Calcite concepts, and JDBC/SQL is not core, but the JDBC connection actually does allow executing relational
+    expressions (I showcased this in my `csv/` subproject) and the JDBC route will apply all the optimizations and also
+    just do lots of the boilerplate that isn't implemented in any "core-only Calcite" route (it just doesn't exist; the
+    Interpreter is the closest thing but is missing a bulk of boilerplate/handling/wiring).
+  * DONE Author straight relational expressions instead of SQL. SQL queries get reduced down to a relational expression anyway
+    and that's what I need to know.
