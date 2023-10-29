@@ -35,7 +35,7 @@ Follow these instructions to build and run the example program.
 
 General clean-ups, TODOs and things I wish to implement for this project:
 
-* IN PROGRESS (I think it's as simple as "don't use the interpreter" but it's murky to me still) Why does the Calcite "interpreter" not use the "fast path" for joins? By contrast, a demo "CSV using Calcite" demo
+* [x] DONE (I think it's as simple as "don't use the interpreter" but it's murky to me still) Why does the Calcite "interpreter" not use the "fast path" for joins? By contrast, a demo "CSV using Calcite" demo
   program (like my own in `csv/`) will not use the interpreter and instead use `org.apache.calcite.linq4j.EnumerableDefaults.mergeJoin`
   and I think the Janino generated code (not 100% sure). The reason I'm using the interpreter is that I found that
   it's the only way to avoid JDBC and therefore to use the relational algebra API directly. But maybe Calcite just
@@ -62,6 +62,9 @@ General clean-ups, TODOs and things I wish to implement for this project:
 * [ ] Assuming that the join is not optimized (or even if it is?), write a custom optimizer rule to optimize the join.
   I want to know the options for implementing joins where there isn't a join key but instead there is a direct pointer
   (object-to-object reference). Or maybe I'll realize that my question doesn't even make sense.
+* [ ] Defect. The join between `CLASSES` and `FIELDS` is acting like an inner join instead of a right join like I want.
+  When a class has no fields (and thus has no corresponding row in the `FIELDS` table), I still want the class to be in
+  the result set.
 
 
 ## Finished Wish List Items
