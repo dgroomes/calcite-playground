@@ -4,7 +4,7 @@ package dgroomes;
  * Named after the {@link io.github.classgraph.FieldInfo}.
  */
 public class FieldInfo {
-    public final String name;
+    public final String NAME;
     public final ClassInfo owningClass;
 
     /**
@@ -13,8 +13,8 @@ public class FieldInfo {
      */
     public final String OWNINGCLASSNAME;
 
-    public FieldInfo(String name, ClassInfo owningClass) {
-        this.name = name;
+    public FieldInfo(String NAME, ClassInfo owningClass) {
+        this.NAME = NAME;
         this.owningClass = owningClass;
         OWNINGCLASSNAME = owningClass.NAME;
     }

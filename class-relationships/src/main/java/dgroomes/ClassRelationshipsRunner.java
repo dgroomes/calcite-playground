@@ -2,6 +2,7 @@ package dgroomes;
 
 import io.github.classgraph.ClassGraph;
 import io.github.classgraph.ClassInfoList;
+import org.apache.calcite.adapter.enumerable.EnumerableConvention;
 import org.apache.calcite.jdbc.CalciteConnection;
 import org.apache.calcite.plan.RelOptUtil;
 import org.apache.calcite.rel.RelNode;
@@ -10,6 +11,7 @@ import org.apache.calcite.schema.Schema;
 import org.apache.calcite.schema.Table;
 import org.apache.calcite.schema.impl.AbstractSchema;
 import org.apache.calcite.sql.SqlNode;
+import org.apache.calcite.sql.fun.SqlLibraryOperators;
 import org.apache.calcite.sql.parser.SqlParseException;
 import org.apache.calcite.tools.*;
 import org.slf4j.Logger;
@@ -84,7 +86,7 @@ public class ClassRelationshipsRunner {
             relRunner = connection.unwrap(RelRunner.class);
 
             //            examineSqlAsRelationalExpression();
-            queryClassesWithMostFields();
+            queryFieldsLike("%x%");
         }
     }
 
@@ -142,30 +144,36 @@ public class ClassRelationshipsRunner {
         log.info("Query executed in {}. Fetched {} rows.", duration, rowCount);
     }
 
-    private void queryClassesWithMostFields() throws Exception {
+    /**
+     * Find fields whose name matches the given pattern. This joins the "CLASSES" and "FIELDS" tables.
+     *
+     * @param pattern the pattern to match. For example, "%x%" will match all fields whose name contains the letter 'x'.
+     */
+    private void queryFieldsLike(String pattern) throws Exception {
         RelBuilder builder = RelBuilder.create(frameworkConfig);
         RelNode relNode = builder
+                .adoptConvention(EnumerableConvention.INSTANCE) // This is not necessary, but we know this expression is going to use the enumerable calling convention in the end.
                 .scan("CLASS_RELATIONSHIPS", "CLASSES")
                 .scan("CLASS_RELATIONSHIPS", "FIELDS")
-                .join(JoinRelType.LEFT,
+                .join(JoinRelType.INNER,
                         builder.equals(
                                 builder.field(2, 0, "NAME"),
                                 builder.field(2, 1, "OWNINGCLASSNAME")))
-                .aggregate(builder.groupKey("NAME"), builder.countStar("NUMBER_OF_FIELDS"))
-                .sortLimit(0, 10, builder.desc(builder.field("NUMBER_OF_FIELDS")))
                 .project(
-                        builder.field("NAME"),
-                        builder.field("NUMBER_OF_FIELDS"))
+                        builder.field(1, "CLASSES", "NAME"),
+                        builder.field(1, "FIELDS", "NAME"))
+                .filter(builder.call(SqlLibraryOperators.ILIKE, builder.field(1), builder.literal(pattern)))
+                .sortLimit(0, 10, builder.field(1, "CLASSES", "NAME"))
                 .build();
 
         log.debug("Relational algebra expression:\n{}", RelOptUtil.toString(relNode));
 
-//        relNode = examineSqlAsRelationalExpression();
+        //        relNode = examineSqlAsRelationalExpression();
 
         query(relNode, resultSet -> {
-            var name = resultSet.getString(1);
-            var count = resultSet.getLong(2);
-            log.info("Class name '{}' has {} fields", name, Util.formatInteger(count));
+            var className = resultSet.getString(1);
+            var fieldName = resultSet.getString(2);
+            log.info("Class/field '{}/{}'", className, fieldName);
         });
     }
 
@@ -177,11 +185,10 @@ public class ClassRelationshipsRunner {
      */
     private RelNode examineSqlAsRelationalExpression() {
         String sql = """
-                select c.name, count(*)
+                select c.name, f.name
                 from class_relationships.classes c
                 left join class_relationships.fields f on c.name = f.owningClassName
-                group by c.name
-                order by count(*) desc
+                where f.name like '%x%'
                 limit 10
                 """;
 

@@ -46,7 +46,7 @@ General clean-ups, TODOs and things I wish to implement for this project:
   I need a whole expression type that is the same spirit as `org.apache.calcite.adapter.enumerable.EnumerableMergeJoin`.
   Again, is enumerable/Linq4j even extensible in this way? I could fork the whole thing, but that's never anything I'd
   use in a non-demo application.
-* [ ] No aggregations. Get rid of the `group by` in the example. My motivating use-case is just "find by property" and
+* [x] DONE No aggregations. Get rid of the `group by` in the example. My motivating use-case is just "find by property" and
   not to compute anything (e.g. a simple `count` is a computation). This is a simple complexity to save on. 
 * [x] DONE Defect. The join between `CLASSES` and `FIELDS` is acting like an inner join instead of a right join like I want.
   When a class has no fields (and thus has no corresponding row in the `FIELDS` table), I still want the class to be in
