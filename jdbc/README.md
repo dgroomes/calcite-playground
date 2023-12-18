@@ -12,7 +12,7 @@ A natural way to use Calcite is via JDBC. This project illustrates that approach
 
 Follow these instructions to build and run the example program.
 
-1. Use Java 17
+1. Use Java 21
 2. Build the program distribution
     * ```shell
       ./gradlew installDist
