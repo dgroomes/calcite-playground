@@ -15,7 +15,7 @@ project will co-mingle SQL and relational algebra expressions.
 
 Follow these instructions to build and run the example program.
 
-1. Use Java 17
+1. Use Java 21
 2. Build and run the program
     * ```shell
       ./gradlew run
