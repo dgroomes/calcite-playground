@@ -1,8 +1,8 @@
 [versions]
-slf4j = "2.0.7" # SLF4J releases: http://www.slf4j.org/news.html
-calcite = "1.35.0" # Apache Calcite releases: https://calcite.apache.org/docs/history.html
-classgraph = "4.8.160" # ClassGraph releases: https://github.com/classgraph/classgraph/releases
-janino = "3.1.9" # Make sure to use the same version of Janino that is used by Calcite
+slf4j = "2.0.9" # SLF4J releases: http://www.slf4j.org/news.html
+calcite = "1.36.0" # Apache Calcite releases: https://calcite.apache.org/docs/history.html
+classgraph = "4.8.165" # ClassGraph releases: https://github.com/classgraph/classgraph/releases
+janino = "3.1.9" # Make sure to use the same version of Janino that is used by Calcite. Check https://github.com/apache/calcite/blob/0be8eaebcf27afae9ecda8ab79db63c214426561/gradle.properties#L126
 
 
 [libraries]

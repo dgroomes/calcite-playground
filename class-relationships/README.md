@@ -20,14 +20,23 @@ I think this will make for a rich enough data set to keep things interesting.
 
 Follow these instructions to build and run the example program.
 
-1. Use Java 17
-2. Build and run the program
+1. Use Java 21
+2. Define shell aliases
     * ```shell
-      ./gradlew run
+      alias go_build="./gradlew installDist"
+      alias go_run="build/install/class-relationships/bin/class-relationships"
       ```
-3. Try running the program with the `TAKE_FIRST_N_CLASSES` option
+3. Build the program distribution
     * ```shell
-      TAKE_FIRST_N_CLASSES=100 ./gradlew run
+      go_build
+      ```
+4. Run the program
+    * ```shell
+      go_run
+      ```
+5. Try running the program with the `TAKE_FIRST_N_CLASSES` option
+    * ```shell
+      go_build && TAKE_FIRST_N_CLASSES=100 go_run
       ```
 
 
