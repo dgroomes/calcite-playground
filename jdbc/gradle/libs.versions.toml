@@ -1,0 +1,15 @@
+[versions]
+# SLF4J releases: http://www.slf4j.org/news.html
+slf4j = "2.0.9"
+
+# Apache Calcite releases: https://calcite.apache.org/docs/history.html
+calcite = "1.36.0"
+
+# H2 releases: https://github.com/h2database/h2database/releases
+h2 = "2.2.224"
+
+[libraries]
+slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
+slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
+calcite-core = { module = "org.apache.calcite:calcite-core", version.ref = "calcite" }
+h2 = { module = "com.h2database:h2", version.ref = "h2" }

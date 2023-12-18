@@ -25,5 +25,6 @@ rootProject.name = "calcite-playground"
 
 includeBuild("csv")
 includeBuild("linq4j")
+includeBuild("jdbc")
 includeBuild("without-jdbc")
 includeBuild("class-relationships")

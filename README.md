@@ -25,6 +25,7 @@ re-using the code.
 
 The subprojects include:
 
+
 ### `csv/`
 
 A Calcite-based program that uses the official CSV adapter to treat CSV files as tables and make them queryable via SQL.
@@ -44,6 +45,13 @@ See the README in [linq4j/](linq4j/).
 An example program that directly engages the core Apache Calcite APIs. JDBC is not in the mix.
 
 See the README in [without-jdbc/](without-jdbc/).
+
+
+### `jdbc/`
+
+An example Calcite program that uses the JDBC adapter.
+
+See the README in [jdbc/](jdbc/).
 
 
 ## Notes
@@ -72,8 +80,9 @@ General clean-ups, TODOs and things I wish to implement for this project:
 * [x] DONE (done in the `class-relationships` subproject) (stretch) UPDATE (ok heap dumps are cool but we need to bring in a lot of complexity to deserialize it which I
   don't want to deal with so let's do a schema over classes. e.g. this class has a field that references this other class) Create a subproject that creates a schema over a heap dump. There already is [a Calcite plugin for Eclipse Memory Analyzer](https://github.com/vlsi/mat-calcite-plugin),
   but I want to learn by implementing something myself and heap dumps are a convenient source of in-memory relational data.
-* [ ] IN PROGRESS Learn how in-memory joins (the thing that Calcite does for something it calls its "enumerable calling convention") are implemented. I want to learn this in the context of the class-relationships subproject. Can
+* [ ] HOLD Learn how in-memory joins (the thing that Calcite does for something it calls its "enumerable calling convention") are implemented. I want to learn this in the context of the class-relationships subproject. Can
   I make an optimizer rule?
+* [x] DONE Make a `jdbc` subproject. I want to showcase a JDBC adapter and the "clone" adapter.
 
 
 ## Reference
